@@ -1,0 +1,8 @@
+# Vercel project link (machine-specific, contains project IDs)
+.vercel/
+
+# Raw conversation transcript backups (huge .jsonl files - the readable .md digests ARE committed)
+.claude/compact-backups/*.jsonl
+
+# Local test artifacts
+*.pdf

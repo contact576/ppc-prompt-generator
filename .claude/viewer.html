@@ -1,0 +1,39 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>pdfview</title>
+<style>body{margin:0;background:#444}canvas{display:block;margin:8px auto;box-shadow:0 2px 8px rgba(0,0,0,.5)}#info{color:#fff;font:14px monospace;text-align:center;padding:6px}</style></head>
+<body><div id="info">loading…</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const params=new URLSearchParams(location.search);
+const from=parseInt(params.get('from')||'1'), to=parseInt(params.get('to')||'4'), scale=parseFloat(params.get('scale')||'1.1');
+pdfjsLib.getDocument('/test-report.pdf').promise.then(async pdf=>{
+  if(params.get('text')){
+    let out='';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const tc=await page.getTextContent();
+      out+='\n===== PAGE '+i+' =====\n';
+      let lastY=null;
+      for(const it of tc.items){
+        if(lastY!==null && Math.abs(it.transform[5]-lastY)>2) out+='\n';
+        out+=it.str+' ';
+        lastY=it.transform[5];
+      }
+    }
+    const pre=document.createElement('pre');pre.style.cssText='color:#eee;white-space:pre-wrap;font:12px monospace;padding:16px';pre.textContent=out;
+    document.body.appendChild(pre);
+    document.getElementById('info').textContent='text dump · '+pdf.numPages+' pages';
+    document.title='textdump';
+    return;
+  }
+  document.getElementById('info').textContent='pages '+from+'-'+Math.min(to,pdf.numPages)+' of '+pdf.numPages;
+  for(let i=from;i<=Math.min(to,pdf.numPages);i++){
+    const page=await pdf.getPage(i);
+    const vp=page.getViewport({scale:scale});
+    const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+    document.body.appendChild(c);
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  }
+  document.title='rendered-'+from+'-'+to;
+}).catch(e=>{document.getElementById('info').textContent='ERROR: '+e.message});
+</script></body></html>
