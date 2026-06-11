@@ -22,3 +22,6 @@ Pushes to `main` auto-deploy via the Vercel Git integration. Manual fallback: `v
 - `index.html` in this repo is the **canonical source** (mirrored from `C:\Users\dapat\Downloads\Prompt Builder data\` on the original machine).
 - Prompt placeholders must match the replacement map byte-for-byte — run the in-app **🔧 Run Diagnostics** button after any template edit.
 - Steps save/load research via the **Research Vault** (Google Drive folder per client) so any step can run in a fresh chat.
+
+---
+*Repo connected to Vercel auto-deploy on 2026-06-11.*
