@@ -4386,10 +4386,30 @@ This prompt produces output in **TWO PASSES**, separated by user review. Do NOT 
 Your **first and only** output is a clean, chat-readable preview of the scripts being created in this step. The strategist will review these, request changes if needed, and only then approve you to produce the full document in Pass 2.
 
 **What to include in Pass 1:**
-- All video scripts from Step 10 (Hook / Message / Offer / CTA per ad)
-- All static post scripts from Step 10 (Hook / Message / Offer / CTA per ad)
-- Retargeting ad scripts if in scope per Step 10
-- Any new offers being proposed (from Step 9 Strategic Decisions or the chain) — list them with one-line rationale
+- All video scripts you derive now (Hook / Message / Offer / CTA per ad) — see SCRIPT DERIVATION RULES below
+- All static post scripts you derive now (Hook / Message / Offer / CTA + Highlighted words + Archetype per ad)
+- Retargeting ad scripts if retargeting is in scope per the strategist's intake (\`[NUM_RETARGETING_SCRIPTS]\`)
+- Any new offers being proposed (synthesized from Step 1 + Step 4 cheat codes + Step 6 audit gaps) — list each with one-line rationale
+
+## SCRIPT DERIVATION RULES — how Pass 1 writes scripts
+
+Step 8 is the FIRST step in the chain that writes ad scripts. Steps 9 and 10 are DOWNSTREAM — they wrap your approved scripts in campaign settings (Step 9) and designer/editor production specs (Step 10). They have NOT run yet. You are the source.
+
+Pull script raw material from these prior steps in conversation memory:
+- **Step 1 (Business Foundation)** — services to feature, client-stated numbers (years, customers, prices) for credibility, ICP language, brand voice, no-go topics, existing offers
+- **Step 2 (Meta Competitor Intel)** — top hooks + structures from Section 10A video transcripts, winning headline patterns, top 10 static archetypes, "The Gap" (Section 11) for whitespace ideas
+- **Step 4 (Meta Market Research & Cheat Codes)** — 🟢 consensus winning angles, seasonality leverage, recommended service from Section 8A, rebates / platform changes worth surfacing
+- **Step 6 (Meta Account Audit)** — if it ran, what's underperforming today (what NOT to repeat), and the audit's biggest gap
+
+Apply these creative gates to every script you write:
+1. **1-Second Rule** — the headline/hook must contain the plain-language service noun (e.g., "BASEMENT RENOVATION", "FURNACE INSTALL"). Image-alone and text-alone must each communicate WHAT this ad is for.
+2. **Service noun in primary text** — surface the service in the first 6 words.
+3. **One concept per ad** — single Hook, single Message, single Offer angle, single CTA. NO Option A/B alternatives.
+4. **Statics declare archetype** — every static specifies ONE of: Poster / Proof Shot / Review Screenshot / Before-After Split / Big Number / Comparison. Each archetype's required ingredient must actually exist in the chain data (e.g., no real review → no Review Screenshot).
+5. **Numbers must trace** — any number in any script (Hook/Message/Offer/CTA/overlay) traces to Step 1, Step 2, Step 4 or Step 6. If it can't, use qualitative language ("most customers" not "73%").
+6. **Logo-swap test** — if a competitor could post this script unchanged, it's generic. Rewrite with the client's proof / place / personality.
+
+Brainstorm internally 2-3 candidate scripts per ad slot, score on the gates above, output only the winners. Do not show the candidates.
 
 **What to EXCLUDE in Pass 1:**
 - The full document structure (cover, executive summary, competitor intel, audit, etc.)
@@ -4418,8 +4438,8 @@ Your **first and only** output is a clean, chat-readable preview of the scripts 
 
 **Static Ad 1A-S1**
 - Hook: [...]
-- Highlight: [the 1-2 emphasized words — must be the service, per Step 10]
-- Archetype: [Poster / Proof Shot / Review Screenshot / Before-After Split / Big Number / Comparison — per Step 10]
+- Highlight: [the 1-2 emphasized words — must be the service noun, per the 1-Second Rule above]
+- Archetype: [Poster / Proof Shot / Review Screenshot / Before-After Split / Big Number / Comparison — selected per Static Archetype Rules above]
 - Message: [...]
 - Offer: [...]
 - CTA: [...]
@@ -4500,19 +4520,19 @@ DO NOT produce "Option A vs Option B" alternatives per ad.
 DO NOT produce "Concept A vs Concept B" choices.
 DO NOT include phrases like "alternatively," "or you could," "version 2," "another approach."
 
-This matches Step 9 and Step 10's Single-Concept Rule. If the strategist runs Step 8 against an old Step 10 output that used Option 1 / Option 2 format, pull only ONE option per ad — pick the recommended one.
+This is the Single-Concept Rule that propagates downstream to Step 9 (campaign settings) and Step 10 (designer/editor production). Pick the strongest concept per ad slot in Pass 1; that's what the client approves and what Steps 9-10 implement.
 
 ## 8. MULTIPLE ADS PER AD SET — RENDER ALL AS SCRIPT CARDS
-Step 10 v2 produces \`[NUM_VIDEO_SCRIPTS]\` video ads + \`[NUM_STATIC_SCRIPTS]\` static ads per ad set. Render EVERY ad as its own full script card in Section 5. The client sees all scripts before approving.
+You produce \`[NUM_VIDEO_SCRIPTS]\` video ads + \`[NUM_STATIC_SCRIPTS]\` static ads per ad set in Pass 1, then render EVERY ad as its own full script card in Section 5 of the Pass 2 document. The client sees all scripts before approving.
 
 DO NOT hide ads behind summary tables. DO NOT show only the "lead" creative per ad set. DO NOT skip statics. Every ad gets a Hook / Message / Offer / CTA card.
 
 If \`[NUM_STATIC_SCRIPTS]\` is 0 for an ad set, skip the static cards for that ad set (no empty placeholders).
 
-## 9. SCRIPTS ARE STRIPPED DOWN
-Pull ONLY Hook / Message / Offer / CTA from Step 10 output. REMOVE: format rationale, production specs, aspect ratios, file formats, creator assignments, who produces it, the Editor Section 3-column table, the Palak Section design specs, brand asset requirements, approval signatures (in script cards — global approval comes at end), dates, "approved by" fields, any production logistics. ONLY the 4 script lines per card.
+## 9. SCRIPTS ARE STRIPPED DOWN — CLIENT-FACING ONLY
+Each script in this document is JUST Hook / Message / Offer / CTA (plus Highlighted words + Archetype for statics). DO NOT include: format rationale, production specs, aspect ratios, file formats, creator assignments, editor directions, design specs, brand asset requirements, per-ad approval signatures, dates, "approved by" fields, or any production logistics. Those belong in Step 10 (Designer/Editor Handoff) downstream — they are NOT what the client approves. The client approves the creative idea, not the production plan. Global approval comes at the end of Section 5 (one signature for all scripts).
 
-## 10. NUMBERS-IN-SCRIPTS TRACEABILITY (matches Step 10 v2)
+## 10. NUMBERS-IN-SCRIPTS TRACEABILITY
 Every number that appears in any script (Hook, Message, Offer, CTA, on-screen text) must trace to a chain source:
 - **Client-stated numbers** (years in business, customer count, exact offer prices) → from Step 1. Source of truth.
 - **Other numbers** (percentages, time savings, ROI claims) → must trace to Step 2/3 (competitor data), Step 4/5 (benchmarks), Step 6/7 (audit).
@@ -4561,7 +4581,7 @@ Before delivering the document in Pass 2:
 - [ ] Section 5.3 Other Strategic Approvals rendered ONLY if material change items exist; if not, subsection skipped cleanly with no placeholder?
 - [ ] Offer/Approval cards in 5.2 and 5.3 use \`> [!APPROVAL]\` callout format?
 - [ ] Scripts wrapped in \`::: script-card\` ... \`:::\` blocks?
-- [ ] Every ad from Step 10 has its own script card (none hidden, none summarized)?
+- [ ] Every ad from Pass 1 has its own script card in Section 5 (none hidden, none summarized)?
 - [ ] Each script card has ONE concept (no Option A / Option B pairs)?
 - [ ] Scripts contain ONLY Hook/Message/Offer/CTA — no production specs, no Editor table, no Palak design specs?
 - [ ] Section 5 ends with ONE Global Approval block covering all 5.1/5.2/5.3 items as a package — not per-card signatures?
@@ -4585,9 +4605,8 @@ Pull ONLY from conversation memory. This step adds ZERO new research.
 - **Step 5 (Google Market Research)** — same structure, Google-specific
 - **Step 6 (Meta Account Audit)** — IF EXISTS — wasted spend CAD, top issues
 - **Step 7 (Google Account Audit)** — IF EXISTS — wasted spend CAD, Search Terms waste, QS issues
-- **Step 9 (Meta Campaign Brief v2)** — campaign structure (\`[NUM_CAMPAIGNS]\` campaigns), conversion destination, offers, ad copy
-- **Step 10 (Meta Creative Brief v2)** — ad set names, ONE concept per ad with Hook/Message/Offer/CTA (STRIP everything else — Editor Section, Palak Section, production specs)
-- **Step 11 (Google Build Spec)** — campaign architecture, keyword focus
+- **Step 8 Pass 1 (this step's own first pass)** — the scripts you just produced and the strategist just approved. These ARE what Section 5 of the document renders.
+- *Step 9 (Meta Campaign Brief) and Step 10 (Designer/Editor Handoff) have NOT run yet — they are downstream of this step. Do NOT reference them as if they produced outputs.*
 
 ## 14. TERMINOLOGY CONTINUITY
 Use [CLIENT_NAME] verbatim from Step 1, service names verbatim, persona names verbatim, geography labels verbatim. Never swap in synonyms.
@@ -4642,7 +4661,7 @@ You do NOT boast about the work done. You let the data prove the depth. You do N
 ## Step 1 — Think & Plan (internal, do not output)
 Before writing, answer to yourself:
 - Which prior steps ran in this chain? (scan conversation memory)
-- What's the service scope from Step 9/10 — single-service or multi-service (recommended + runner-up)?
+- What's the service scope — single-service or multi-service (recommended + optional runner-up from Step 4 Section 8A)?
 - What are the top 3 competitor insights worth surfacing?
 - What are the top 3 market/industry insights worth surfacing for the recommended service(s)?
 - If audit ran, what are the top 5 account opportunities in order of dollar impact?
@@ -4838,7 +4857,7 @@ Meta industry | [N] | blue
 Google industry | [N] | orange
 :::
 
-If multi-service mode (Step 9/10 produced for recommended + runner-up), state benchmarks for the recommended service primarily, with one line referencing runner-up if material differences exist.
+If multi-service mode is in scope (recommended + runner-up service per Step 4 Section 8A), state benchmarks for the recommended service primarily, with one line referencing the runner-up if material differences exist.
 
 ## 2.2 What industry experts are doing in 2025-2026
 
@@ -4959,9 +4978,9 @@ Intro paragraph (max 80 words):
 
 > **Why this needs approval:** These are the messages [CLIENT_NAME] will run as ads. One creative concept per ad — no Option A vs Option B alternatives. Approving these locks them for production.
 
-Then for EACH AD SET from Step 10, render the heading and all ads belonging to it. The structure:
+Then for EACH AD SET from Pass 1, render the heading and all ads belonging to it. The structure:
 
-### Ad Set [N][Letter] · [Service Name — matches Step 10 exactly]
+### Ad Set [N][Letter] · [Service Name — matches Pass 1 exactly]
 
 For each video ad in this ad set ([NUM_VIDEO_SCRIPTS] cards):
 
@@ -4971,10 +4990,10 @@ For each video ad in this ad set ([NUM_VIDEO_SCRIPTS] cards):
 
 | | |
 |---|---|
-| **Hook** | [3-second opening line — from Step 10] |
-| **Message** | [core body — from Step 10] |
-| **Offer** | [specific offer — from Step 10] |
-| **CTA** | [call to action — from Step 10] |
+| **Hook** | [3-second opening line — from Pass 1] |
+| **Message** | [core body — from Pass 1] |
+| **Offer** | [specific offer — from Pass 1] |
+| **CTA** | [call to action — from Pass 1] |
 
 :::
 
@@ -4986,14 +5005,14 @@ For each static ad in this ad set ([NUM_STATIC_SCRIPTS] cards):
 
 | | |
 |---|---|
-| **Hook** | [headline overlay — from Step 10] |
-| **Message** | [body copy on static — from Step 10] |
-| **Offer** | [specific offer — from Step 10] |
-| **CTA** | [CTA on static — from Step 10] |
+| **Hook** | [headline overlay — from Pass 1] |
+| **Message** | [body copy on static — from Pass 1] |
+| **Offer** | [specific offer — from Pass 1] |
+| **CTA** | [CTA on static — from Pass 1] |
 
 :::
 
-Repeat for every ad set from Step 10. Then add retargeting ad cards (if retargeting was in scope per Step 10):
+Repeat for every ad set from Pass 1. Then add retargeting ad cards (if retargeting was in scope per the strategist's intake):
 
 ### Ad Set R · Retargeting (if in scope)
 
@@ -5003,10 +5022,10 @@ Repeat for every ad set from Step 10. Then add retargeting ad cards (if retarget
 
 | | |
 |---|---|
-| **Hook** | [from Step 10] |
-| **Message** | [from Step 10] |
-| **Offer** | [from Step 10] |
-| **CTA** | [from Step 10] |
+| **Hook** | [from Pass 1] |
+| **Message** | [from Pass 1] |
+| **Offer** | [from Pass 1] |
+| **CTA** | [from Pass 1] |
 
 :::
 
@@ -5022,7 +5041,7 @@ ONLY the 4 fields per card.
 
 > **Why this needs approval:** Any new offer changes pricing, terms, or messaging that you must confirm before launch.
 
-**CONDITIONAL SUBSECTION.** Render this subsection only if the campaign includes one or more NEW offers being proposed (i.e., offers different from those in Step 1). New offers may surface from Step 4/5 (market research), Step 9 (campaign brief offer strategy), or as part of Section 4 strategic decisions in this document. If NO new offers are being proposed (campaigns will run on existing client offers from Step 1), skip this subsection entirely with NO placeholder line — go directly to 5.3.
+**CONDITIONAL SUBSECTION.** Render this subsection only if the campaign includes one or more NEW offers being proposed (i.e., offers different from those in Step 1). New offers may surface from Step 4/5 (market research cheat codes), Step 6/7 audit findings, or as part of Section 4 strategic decisions in this document — and they are listed in your Pass 1 "New Offers Proposed" block. If NO new offers are being proposed (campaigns will run on existing client offers from Step 1), skip this subsection entirely with NO placeholder line — go directly to 5.3.
 
 For each NEW offer being proposed, render this approval card:
 
@@ -5118,7 +5137,7 @@ For questions before approval, contact [Consultant Name] at [phone + email].
 
 ## Research Appendices
 
-The full underlying research is available on request in [N] supporting documents: [list actual steps that ran — e.g., Business Overview Brief (Step 1), Meta Competitor Intelligence (Step 2), Meta Market Research & Cheat Codes (Step 4), Meta Account Audit (Step 6), Campaign Execution Brief (Step 9), Creative Approval Brief (Step 10)].
+The full underlying research is available on request in [N] supporting documents: [list ONLY the steps that ACTUALLY ran upstream of this one — e.g., Business Overview Brief (Step 1), Meta Competitor Intelligence (Step 2), Meta Market Research & Cheat Codes (Step 4), Meta Account Audit (Step 6). Do NOT list Step 9 or Step 10 — they are downstream and have not produced documents yet.].
 
 ## Confidentiality
 
@@ -5178,7 +5197,7 @@ For each static ad in Section 5.1 (every \`Ad [N][Letter]-S[#]\`), output:
 
 For each video ad, follow this procedure:
 
-**1. Read the script** — Hook + Message + Offer + CTA from Step 10. Note format/length if specified (e.g., "30s UGC vertical").
+**1. Read the script** — Hook + Message + Offer + CTA from your Pass 1 above. Note format/length if implied (e.g., "30s UGC vertical").
 
 **2. Decide panel count:**
 - 4 panels: short script with only Hook → Message → Offer → CTA
@@ -5207,7 +5226,7 @@ For each video ad, follow this procedure:
 **6. Use this storyboard prompt template:**
 
 \`\`\`
-Create a [4 / 5 / 6]-panel storyboard image for a [N]-second [video format from Step 10 — e.g. "UGC vertical", "motion graphics 16:9", "testimonial talking head"] video ad. Layout: [4 panels = 2×2 grid / 5 panels = 1 row of 5 / 6 panels = 3×2 grid]. Each panel has a thin border with the panel number in the top-left corner. Style: comic-book-style storyboard, like a director's pre-production sketch — realistic but stylized, not finished animation.
+Create a [4 / 5 / 6]-panel storyboard image for a [N]-second [video format you chose in Pass 1 — e.g. "UGC vertical", "motion graphics 16:9", "testimonial talking head"] video ad. Layout: [4 panels = 2×2 grid / 5 panels = 1 row of 5 / 6 panels = 3×2 grid]. Each panel has a thin border with the panel number in the top-left corner. Style: comic-book-style storyboard, like a director's pre-production sketch — realistic but stylized, not finished animation.
 
 Brand visual style: [pull 1-2 descriptors from Step 1 brand voice — e.g., "warm and family-owned, soft natural lighting, real-people-feeling"]. Color palette: [brand colors from Step 1 if specified, otherwise warm neutrals with one accent color].
 
@@ -5245,14 +5264,14 @@ When writing the prompt, fill in EVERY bracketed placeholder with the actual der
 
 For each static ad, follow this procedure:
 
-**1. Read the static script** — Hook + Message + Offer + CTA from Step 10. The Hook is the headline overlay; Message is supporting copy; Offer + CTA anchor the bottom of the image.
+**1. Read the static script** — Hook + Message + Offer + CTA from your Pass 1 above. The Hook is the headline overlay; Message is supporting copy; Offer + CTA anchor the bottom of the image.
 
 **2. Decide aspect ratio:**
 - 4:5 (1080×1350) → DEFAULT — takes more vertical feed space than 1:1
 - 9:16 (1080×1920) → Stories / Reels static placement
-- 1:1 (1080×1080) → only if Step 10 specified it
+- 1:1 (1080×1080) → only if your Pass 1 specified it
 
-**3. Plan the layout by the ad's ARCHETYPE (declared in Step 10 — honor it exactly):**
+**3. Plan the layout by the ad's ARCHETYPE (declared in your Pass 1 — honor it exactly):**
 - **Poster** → 3 zones: Hook headline top (~30%), service visual middle (~50%), offer band + CTA button bottom (~20%).
 - **Proof Shot** → one full-bleed photo of the actual work/result, Hook overlaid in clean type, small corner logo. NO offer band, NO button.
 - **Review Screenshot** → clean review-card UI: 5 stars, the real review text with key phrase highlighted, reviewer first name, small kicker naming the service. NO button.
@@ -5260,7 +5279,7 @@ For each static ad, follow this procedure:
 - **Big Number** → the stat rendered huge, support line naming the service, minimal decoration.
 - **Comparison** → two-column us-vs-them checklist, max 4 rows, service noun in the title row.
 
-Include the de-risk line (small print) if Step 10 specified one.
+Include the de-risk line (small print) if your Pass 1 specified one.
 
 **4. Derive the background imagery** from the service nature + Hook context:
 - Trust-driven services (medical, home services, legal) → photo-realistic
@@ -5275,7 +5294,7 @@ Create a [aspect ratio: 1:1 1080×1080 OR 4:5 1080×1350 OR 9:16 1080×1920] soc
 Brand visual style: [pull 1-2 descriptors from Step 1 brand voice]. Color palette: [brand colors from Step 1 if specified — avoid white-dominant backgrounds that bleed into the feed].
 
 Layout — [name the archetype], composed as:
-[Write the layout per the archetype mapping in derivation step 3 above. Always render the EXACT hook text in quotes with the highlight words (the 1-2 service words from Step 10) visually dominant — larger, bolder, or in the accent color. Include the EXACT message / offer / CTA lines ONLY where the archetype calls for them; native archetypes (Proof Shot, Review Screenshot) get NO offer band and NO on-image button. Describe the visual scene specifically: who is shown, what action, lighting, angle, mood — tied to the service. Include the de-risk line in small print if Step 10 specified one.]
+[Write the layout per the archetype mapping in derivation step 3 above. Always render the EXACT hook text in quotes with the highlight words (the 1-2 service words from your Pass 1) visually dominant — larger, bolder, or in the accent color. Include the EXACT message / offer / CTA lines ONLY where the archetype calls for them; native archetypes (Proof Shot, Review Screenshot) get NO offer band and NO on-image button. Describe the visual scene specifically: who is shown, what action, lighting, angle, mood — tied to the service. Include the de-risk line in small print if your Pass 1 specified one.]
 
 Typography: Clean modern sans-serif. The highlighted service words are the most prominent text element. All text must be legible and well-composed. No script fonts, no Comic Sans, no overly decorative typefaces.
 
