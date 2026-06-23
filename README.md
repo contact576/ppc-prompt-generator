@@ -25,3 +25,5 @@ Pushes to `main` auto-deploy via the Vercel Git integration. Manual fallback: `v
 
 ---
 *Repo connected to Vercel auto-deploy on 2026-06-11.*
+
+<!-- redeploy: git author switched to GitHub-verified noreply on 2026-06-12 -->
