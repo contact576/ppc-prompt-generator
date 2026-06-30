@@ -686,7 +686,7 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
 
     <div class="intro">
       <div class="intro-title">What do you need today?</div>
-      <div class="intro-sub">Pick a quick-start bundle below, or choose "Custom Mix" to select any combination of prompts (even just one).</div>
+      <div class="intro-sub">Choose your runtime, pick a platform (Meta or Google), hit a preset, then fine-tune the exact steps to run.</div>
 
       <div class="test-data-row">
         <div class="test-data-text">🧪 <strong>First time?</strong> Load sample data to do a dry run before using with a real client.</div>
@@ -721,16 +721,8 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
       <div id="claudeCodeControls" style="display:none; padding:16px; background:rgba(0,0,0,.025); border-radius:8px; border:1px solid rgba(0,0,0,.08); margin-bottom:18px">
         <div style="font-weight:600; margin-bottom:12px; font-size:14px">Claude Code orchestrator settings</div>
 
-        <div style="margin-bottom:14px">
-          <label for="f_outcome" style="display:block; margin-bottom:6px; font-weight:500; font-size:13px">Final output you want:</label>
-          <select id="f_outcome" onchange="updateRuntimeUI()" style="width:100%; padding:9px 10px; border:1px solid rgba(0,0,0,.18); border-radius:6px; background:white; font-size:13px">
-            <option value="out-full">Full pipeline (research &rarr; audit &rarr; strategy &rarr; campaign &rarr; production)</option>
-            <option value="out-recap-only">Strategy + client recap only (stops at P8 deliverable)</option>
-            <option value="out-audit-only">Audit only (foundation + research + P6/P7)</option>
-            <option value="out-research-only">Research only (P1-P5, no audit, no strategy)</option>
-            <option value="out-production">Production-ready (full chain &mdash; internal execution briefs only)</option>
-            <option value="out-custom">Custom (use the step checkboxes from the bundle picker above)</option>
-          </select>
+        <div style="margin-bottom:14px; padding:10px 12px; background:rgba(194,65,12,.06); border-radius:6px; font-size:12.5px; line-height:1.5">
+          ℹ️ The orchestrator wraps <strong>exactly the steps you select below</strong> (platform + checklist). Pick a platform, hit a preset, then fine-tune the boxes &mdash; the master prompt is built from that selection.
         </div>
 
         <div style="display:flex; gap:14px; margin-bottom:14px">
@@ -773,84 +765,65 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </div>
       </div>
 
-      <div class="bundle-grid">
-        <div class="bundle" data-bundle="full" onclick="pickBundle('full')">
-          <span class="bundle-time">~45 min</span>
-          <span class="bundle-icon">🚀</span>
-          <div class="bundle-name">New Client — Full Pipeline</div>
-          <div class="bundle-desc">Complete strategy chain end-to-end for new client onboarding.</div>
-          <div class="bundle-meta">Steps 1, 2, 3, 4, 5, 8, 9, 10, 11 (9 prompts)</div>
-        </div>
+      <style>
+        .platform-row{margin:6px 0 14px}
+        .platform-label{font-size:13.5px;margin-bottom:8px}
+        .platform-hint{color:rgba(0,0,0,.5);font-weight:400}
+        .platform-chips{display:flex;gap:10px;flex-wrap:wrap}
+        .platform-chip{font:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;border:1.5px solid rgba(0,0,0,.18);background:#fff;cursor:pointer;transition:all .15s}
+        .platform-chip:hover{border-color:var(--signal,#C2410C);transform:translateY(-1px)}
+        .platform-chip.selected{border-color:var(--signal,#C2410C);background:var(--signal-tint,rgba(194,65,12,.08));color:var(--signal,#C2410C)}
+        .preset-row{margin:0 0 16px}
+        .preset-label{font-size:13px;margin-bottom:8px}
+        .preset-hint{color:rgba(0,0,0,.45);font-weight:400}
+        .preset-buttons{display:flex;gap:8px;flex-wrap:wrap}
+        .btn-preset{font:inherit;font-size:12.5px;padding:7px 13px;border-radius:7px;border:1px solid rgba(0,0,0,.15);background:#fff;cursor:pointer;transition:all .15s}
+        .btn-preset:hover{border-color:var(--signal,#C2410C);background:var(--paper-2,#FAFAFA)}
+        .btn-preset-clear{color:#B91C1C;border-color:rgba(185,28,28,.25)}
+        .step-group[data-track]{transition:opacity .15s}
+        .selection-summary{margin:14px 0 0;padding:12px 14px;background:var(--signal-tint,rgba(194,65,12,.06));border:1px solid rgba(194,65,12,.18);border-radius:8px;font-size:13px}
+        .selection-summary .ss-title{font-weight:700;margin-bottom:4px}
+        .selection-summary .ss-empty{color:#B91C1C}
+      </style>
 
-        <div class="bundle" data-bundle="full-existing" onclick="pickBundle('full-existing')">
-          <span class="bundle-time">~60 min</span>
-          <span class="bundle-icon">📊</span>
-          <div class="bundle-name">Existing Client — Full Audit + Rebuild</div>
-          <div class="bundle-desc">Complete chain including account audits for clients with existing accounts.</div>
-          <div class="bundle-meta">All 11 prompts</div>
-        </div>
-
-        <div class="bundle" data-bundle="audit" onclick="pickBundle('audit')">
-          <span class="bundle-time">~20 min</span>
-          <span class="bundle-icon">🔍</span>
-          <div class="bundle-name">Audit Only</div>
-          <div class="bundle-desc">Just account audits for an existing client checkup.</div>
-          <div class="bundle-meta">Steps 6, 7 (2 prompts)</div>
-        </div>
-
-        <div class="bundle" data-bundle="research" onclick="pickBundle('research')">
-          <span class="bundle-time">~25 min</span>
-          <span class="bundle-icon">📚</span>
-          <div class="bundle-name">Research Only</div>
-          <div class="bundle-desc">Competitor intel + market research. Use for sales pitches.</div>
-          <div class="bundle-meta">Steps 2, 3, 4, 5 (4 prompts)</div>
-        </div>
-
-        <div class="bundle" data-bundle="meta-only" onclick="pickBundle('meta-only')">
-          <span class="bundle-time">~35 min</span>
-          <span class="bundle-icon">📱</span>
-          <div class="bundle-name">Meta Ads — Full Track</div>
-          <div class="bundle-desc">Everything Meta-related, no Google work. For Meta-only clients.</div>
-          <div class="bundle-meta">Steps 1, 2, 4, 6, 8, 9, 11 (7 prompts)</div>
-        </div>
-
-        <div class="bundle" data-bundle="google-only" onclick="pickBundle('google-only')">
-          <span class="bundle-time">~30 min</span>
-          <span class="bundle-icon">🔎</span>
-          <div class="bundle-name">Google Ads — Full Track</div>
-          <div class="bundle-desc">Everything Google-related, no Meta work. For Google-only clients.</div>
-          <div class="bundle-meta">Steps 1, 3, 5, 7, 10, 11 (6 prompts)</div>
+      <!-- PLATFORM SELECTOR -->
+      <div class="platform-row">
+        <div class="platform-label"><strong>Platform:</strong> <span class="platform-hint">Most runs are a single platform. Pick the track to build — the checklist filters to match.</span></div>
+        <div class="platform-chips">
+          <button type="button" class="platform-chip selected" data-platform="meta" onclick="pickPlatform('meta')">📱 Meta Ads</button>
+          <button type="button" class="platform-chip" data-platform="google" onclick="pickPlatform('google')">🔎 Google Ads</button>
+          <button type="button" class="platform-chip" data-platform="both" onclick="pickPlatform('both')">📱➕🔎 Both</button>
         </div>
       </div>
 
-      <div class="custom-toggle" id="customToggle" onclick="pickBundle('custom')">
-        <span class="custom-icon">🛠</span>
-        <span class="custom-label">Custom Mix — Pick any combination (1 to 11 prompts)</span>
-        <div class="custom-sub">Use this if you need just one prompt or non-standard combination</div>
-      </div>
-
-      <div class="bundle-preview" id="bundlePreview">
-        <div class="bp-title">Selected Prompts (in run order)</div>
-        <div class="bp-list" id="bpList"></div>
+      <!-- QUICK PRESETS -->
+      <div class="preset-row">
+        <div class="preset-label"><strong>Quick presets</strong> <span class="preset-hint">(checks the right boxes for the selected platform — you can still adjust each step below)</span></div>
+        <div class="preset-buttons">
+          <button type="button" class="btn-preset" onclick="applyPreset('new')">Full track · New client</button>
+          <button type="button" class="btn-preset" onclick="applyPreset('existing')">Full track · Existing (+ audit)</button>
+          <button type="button" class="btn-preset" onclick="applyPreset('research')">Research only</button>
+          <button type="button" class="btn-preset" onclick="applyPreset('audit')">Audit only</button>
+          <button type="button" class="btn-preset" onclick="applyPreset('recap')">Strategy recap (stop at P8)</button>
+          <button type="button" class="btn-preset btn-preset-clear" onclick="applyPreset('clear')">Clear all</button>
+        </div>
       </div>
     </div>
 
-    <!-- CUSTOM PROMPT PICKER -->
-    <div class="picker-section" id="customPicker">
+    <!-- UNIFIED STEP CHECKLIST (always visible, platform-grouped) -->
+    <div class="picker-section active" id="customPicker">
       <div class="picker-header">
         <div>
-          <div class="picker-title">Select prompts (any 1 to 11)</div>
-          <div class="picker-sub">Tags show standalone capability. Smart dependency suggestions available.</div>
+          <div class="picker-title">Steps to run</div>
+          <div class="picker-sub">Presets above check these for you. Adjust any box — this is exactly what gets generated.</div>
         </div>
         <div class="picker-actions">
-          <button class="btn-tiny" onclick="selectAllCustom()">Select All</button>
-          <button class="btn-tiny" onclick="clearAllCustom()">Clear All</button>
           <button class="btn-tiny" onclick="autoIncludeDependencies()">+ Auto-Add Dependencies</button>
         </div>
       </div>
 
-      <div class="stage-group">
-        <div class="stage-name">Stage 1 — Foundation</div>
+      <div class="stage-group" data-track="shared">
+        <div class="stage-name">Foundation — both platforms</div>
         <div class="prompt-pick" onclick="toggleCustom('p1')">
           <input type="checkbox" id="cp1" />
           <div class="prompt-info">
@@ -864,8 +837,8 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </div>
       </div>
 
-      <div class="stage-group">
-        <div class="stage-name">Stage 2 — Research</div>
+      <div class="stage-group" data-track="meta">
+        <div class="stage-name">📱 Meta Ads — Research</div>
         <div class="prompt-pick" onclick="toggleCustom('p2')">
           <input type="checkbox" id="cp2" />
           <div class="prompt-info">
@@ -873,18 +846,7 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
             <div class="prompt-meta">
               <span class="tag semi">Semi-Standalone</span>
               <span class="tag time">~7 min</span>
-              <span>Apify Meta Ad Library scrape</span>
-            </div>
-          </div>
-        </div>
-        <div class="prompt-pick" onclick="toggleCustom('p3')">
-          <input type="checkbox" id="cp3" />
-          <div class="prompt-info">
-            <div class="prompt-name">Step 3 · Google Ads Competitor Intelligence</div>
-            <div class="prompt-meta">
-              <span class="tag semi">Semi-Standalone</span>
-              <span class="tag time">~8 min</span>
-              <span>Google Transparency + Search scrape</span>
+              <span>Apify Meta Ad Library scrape + video transcripts</span>
             </div>
           </div>
         </div>
@@ -896,6 +858,62 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
               <span class="tag standalone">Standalone</span>
               <span class="tag time">~5 min</span>
               <span>Industry benchmarks + expert strategies</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-group" data-track="meta">
+        <div class="stage-name">📱 Meta Ads — Account Audit <span style="font-weight:400;color:rgba(0,0,0,.45)">(existing accounts only)</span></div>
+        <div class="prompt-pick" onclick="toggleCustom('p6')">
+          <input type="checkbox" id="cp6" />
+          <div class="prompt-info">
+            <div class="prompt-name">Step 6 · Meta Account Audit</div>
+            <div class="prompt-meta">
+              <span class="tag semi">Semi-Standalone</span>
+              <span class="tag time">~10 min</span>
+              <span>Forensic audit via Adzviser → Meta MCP fallback</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-group" data-track="meta">
+        <div class="stage-name">📱 Meta Ads — Execution <span style="font-weight:400;color:rgba(0,0,0,.45)">(post-approval)</span></div>
+        <div class="prompt-pick" onclick="toggleCustom('p9')">
+          <input type="checkbox" id="cp9" />
+          <div class="prompt-info">
+            <div class="prompt-name">Step 9 · Meta Campaign Execution Brief</div>
+            <div class="prompt-meta">
+              <span class="tag chain">Chain Required</span>
+              <span class="tag time">~8 min</span>
+              <span>Audience, geo, placements, 5×5×5 ad copy</span>
+            </div>
+          </div>
+        </div>
+        <div class="prompt-pick" onclick="toggleCustom('p10')">
+          <input type="checkbox" id="cp10" />
+          <div class="prompt-info">
+            <div class="prompt-name">Step 10 · Meta Creative Production Brief (Designer/Editor)</div>
+            <div class="prompt-meta">
+              <span class="tag chain">Chain Required</span>
+              <span class="tag time">~7 min</span>
+              <span>Scripts · 8–10 slide storyboards · static archetypes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-group" data-track="google">
+        <div class="stage-name">🔎 Google Ads — Research</div>
+        <div class="prompt-pick" onclick="toggleCustom('p3')">
+          <input type="checkbox" id="cp3" />
+          <div class="prompt-info">
+            <div class="prompt-name">Step 3 · Google Ads Competitor Intelligence</div>
+            <div class="prompt-meta">
+              <span class="tag semi">Semi-Standalone</span>
+              <span class="tag time">~8 min</span>
+              <span>Google Transparency + Search scrape</span>
             </div>
           </div>
         </div>
@@ -912,19 +930,8 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </div>
       </div>
 
-      <div class="stage-group">
-        <div class="stage-name">Stage 3 — Account Audit (existing accounts only)</div>
-        <div class="prompt-pick" onclick="toggleCustom('p6')">
-          <input type="checkbox" id="cp6" />
-          <div class="prompt-info">
-            <div class="prompt-name">Step 6 · Meta Account Audit</div>
-            <div class="prompt-meta">
-              <span class="tag semi">Semi-Standalone</span>
-              <span class="tag time">~10 min</span>
-              <span>Forensic audit via Adzviser</span>
-            </div>
-          </div>
-        </div>
+      <div class="stage-group" data-track="google">
+        <div class="stage-name">🔎 Google Ads — Account Audit <span style="font-weight:400;color:rgba(0,0,0,.45)">(existing accounts only)</span></div>
         <div class="prompt-pick" onclick="toggleCustom('p7')">
           <input type="checkbox" id="cp7" />
           <div class="prompt-info">
@@ -938,8 +945,23 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </div>
       </div>
 
-      <div class="stage-group">
-        <div class="stage-name">Stage 4 — Client Deliverable (Approval Gate)</div>
+      <div class="stage-group" data-track="google">
+        <div class="stage-name">🔎 Google Ads — Execution <span style="font-weight:400;color:rgba(0,0,0,.45)">(post-approval)</span></div>
+        <div class="prompt-pick" onclick="toggleCustom('p11')">
+          <input type="checkbox" id="cp11" />
+          <div class="prompt-info">
+            <div class="prompt-name">Step 11 · Google Ads Build Spec</div>
+            <div class="prompt-meta">
+              <span class="tag chain">Chain Required</span>
+              <span class="tag time">~10 min</span>
+              <span>Campaign architecture · 80+ negatives · 15 H + 4 D</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-group" data-track="shared">
+        <div class="stage-name">Client Deliverable <span style="font-weight:400;color:rgba(0,0,0,.45)">(approval gate — uses whichever platform's data you ran)</span></div>
         <div class="prompt-pick" onclick="toggleCustom('p8')">
           <input type="checkbox" id="cp8" />
           <div class="prompt-info">
@@ -947,47 +969,15 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
             <div class="prompt-meta">
               <span class="tag chain">Chain Required</span>
               <span class="tag time">~10 min</span>
-              <span>Themed deliverable · single-concept scripts · global approval</span>
+              <span>Themed client PDF · scripts · global approval gate</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="stage-group">
-        <div class="stage-name">Stage 5 — Execution Specs (post-approval)</div>
-        <div class="prompt-pick" onclick="toggleCustom('p9')">
-          <input type="checkbox" id="cp9" />
-          <div class="prompt-info">
-            <div class="prompt-name">Step 9 · Meta Campaign Execution Brief (Srikant)</div>
-            <div class="prompt-meta">
-              <span class="tag chain">Chain Required</span>
-              <span class="tag time">~8 min</span>
-              <span>5 variations per ad copy element</span>
-            </div>
-          </div>
-        </div>
-        <div class="prompt-pick" onclick="toggleCustom('p10')">
-          <input type="checkbox" id="cp10" />
-          <div class="prompt-info">
-            <div class="prompt-name">Step 10 · Meta Creative & Approval Brief (Palak)</div>
-            <div class="prompt-meta">
-              <span class="tag chain">Chain Required</span>
-              <span class="tag time">~7 min</span>
-              <span>Data-decided format · 2 options per ad set</span>
-            </div>
-          </div>
-        </div>
-        <div class="prompt-pick" onclick="toggleCustom('p11')">
-          <input type="checkbox" id="cp11" />
-          <div class="prompt-info">
-            <div class="prompt-name">Step 11 · Google Ads Build Spec (Srikant)</div>
-            <div class="prompt-meta">
-              <span class="tag chain">Chain Required</span>
-              <span class="tag time">~10 min</span>
-              <span>Excel + narrative · 80+ negatives · 15 H + 4 D</span>
-            </div>
-          </div>
-        </div>
+      <div class="selection-summary" id="selectionSummary">
+        <div class="ss-title">Nothing selected yet</div>
+        <div class="ss-empty">Pick a platform + preset above, or check steps below.</div>
       </div>
     </div>
 
@@ -8458,96 +8448,133 @@ function loadTestData() {
 // ============================================
 // PHASE A — BUNDLE / CUSTOM SELECTION
 // ============================================
-function pickBundle(bundleKey) {
-  document.querySelectorAll('.bundle').forEach(b => b.classList.remove('selected'));
-  document.getElementById('customToggle').classList.remove('selected');
-  document.getElementById('customPicker').classList.remove('active');
+// ============================================
+// STEP SELECTION — unified platform-aware model
+// ============================================
+const META_STEPS = ['p2','p4','p6','p9','p10'];
+const GOOGLE_STEPS = ['p3','p5','p7','p11'];
+const ALL_STEP_IDS = ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'];
+let selectedPlatform = 'meta';
 
-  if (bundleKey === 'custom') {
-    document.getElementById('customToggle').classList.add('selected');
-    document.getElementById('customPicker').classList.add('active');
-    selectedBundle = 'custom';
-    updateCustomSelection();
-  } else {
-    const bundleEl = document.querySelector('[data-bundle="' + bundleKey + '"]');
-    if (bundleEl) bundleEl.classList.add('selected');
-    selectedBundle = bundleKey;
-    selectedPrompts = [...BUNDLES[bundleKey].prompts];
-    document.getElementById('toFormBtn').disabled = false;
-    showBundlePreview();
+// Steps that belong to a platform's scope (Foundation + platform track + Deliverable).
+function stepsInPlatform(platform) {
+  if (platform === 'meta') return ['p1'].concat(META_STEPS, ['p8']);
+  if (platform === 'google') return ['p1'].concat(GOOGLE_STEPS, ['p8']);
+  return ALL_STEP_IDS.slice();
+}
+
+function pickPlatform(platform) {
+  selectedPlatform = platform;
+  document.querySelectorAll('.platform-chip').forEach(function(c) {
+    c.classList.toggle('selected', c.getAttribute('data-platform') === platform);
+  });
+  // Show/hide step groups by track
+  document.querySelectorAll('.stage-group[data-track]').forEach(function(g) {
+    const track = g.getAttribute('data-track');
+    const show = (track === 'shared') || (platform === 'both') || (track === platform);
+    g.style.display = show ? '' : 'none';
+  });
+  // Drop any checked steps that aren't in this platform's scope
+  const allowed = stepsInPlatform(platform);
+  ALL_STEP_IDS.forEach(function(pid) { if (allowed.indexOf(pid) === -1) setStepChecked(pid, false); });
+  // Auto-apply the new-client preset so the checklist is never empty after switching
+  applyPreset('new');
+}
+
+// The step list for a named preset, scoped to the active platform.
+function presetSteps(kind, platform) {
+  const research = platform === 'meta' ? ['p2','p4'] : platform === 'google' ? ['p3','p5'] : ['p2','p3','p4','p5'];
+  const audit    = platform === 'meta' ? ['p6']     : platform === 'google' ? ['p7']     : ['p6','p7'];
+  const exec     = platform === 'meta' ? ['p9','p10'] : platform === 'google' ? ['p11']  : ['p9','p10','p11'];
+  switch (kind) {
+    case 'new':      return ['p1'].concat(research, exec, ['p8']);
+    case 'existing': return ['p1'].concat(research, audit, exec, ['p8']);
+    case 'research': return ['p1'].concat(research);
+    case 'audit':    return ['p1'].concat(audit);
+    case 'recap':    return ['p1'].concat(research, ['p8']);
+    case 'clear':    return [];
+    default:         return [];
   }
 }
 
-function showBundlePreview() {
-  const sorted = [...selectedPrompts].sort((a, b) => PROMPT_INFO[a].num - PROMPT_INFO[b].num);
-  const list = sorted.map((pid, idx) => {
-    const info = PROMPT_INFO[pid];
-    return (idx + 1) + '. <strong>Step ' + info.num + '</strong> — ' + info.name + ' <span style="color:#9CA3AF">(' + info.time + ')</span>';
-  }).join('<br>');
-  document.getElementById('bpList').innerHTML = list;
-  document.getElementById('bundlePreview').classList.add('active');
+function applyPreset(kind) {
+  const target = presetSteps(kind, selectedPlatform);
+  ALL_STEP_IDS.forEach(function(pid) { setStepChecked(pid, target.indexOf(pid) !== -1); });
+  refreshSelection();
+}
+
+function setStepChecked(pid, checked) {
+  const cb = document.getElementById('c' + pid);
+  if (!cb) return;
+  cb.checked = checked;
+  const card = cb.closest('.prompt-pick');
+  if (card) card.classList.toggle('selected', checked);
 }
 
 function toggleCustom(promptId) {
   const cb = document.getElementById('c' + promptId);
-  cb.checked = !cb.checked;
-  const card = cb.closest('.prompt-pick');
-  if (cb.checked) card.classList.add('selected');
-  else card.classList.remove('selected');
-  updateCustomSelection();
+  if (!cb) return;
+  setStepChecked(promptId, !cb.checked);
+  refreshSelection();
 }
 
-function updateCustomSelection() {
-  selectedPrompts = [];
-  ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'].forEach(pid => {
+// CORE: read checkboxes → selectedPrompts → enable Continue → update summary. Both runtimes.
+function refreshSelection() {
+  selectedPrompts = ALL_STEP_IDS.filter(function(pid) {
     const cb = document.getElementById('c' + pid);
-    if (cb && cb.checked) selectedPrompts.push(pid);
+    return cb && cb.checked;
   });
-  document.getElementById('toFormBtn').disabled = selectedPrompts.length === 0;
-  if (selectedPrompts.length > 0) showBundlePreview();
-  else document.getElementById('bundlePreview').classList.remove('active');
+  selectedBundle = 'custom';
+  const btn = document.getElementById('toFormBtn');
+  if (btn) btn.disabled = selectedPrompts.length === 0;
+  updateSelectionSummary();
 }
 
-function selectAllCustom() {
-  ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'].forEach(pid => {
-    const cb = document.getElementById('c' + pid);
-    if (cb && !cb.checked) {
-      cb.checked = true;
-      cb.closest('.prompt-pick').classList.add('selected');
-    }
-  });
-  updateCustomSelection();
+// Back-compat alias for any older callers.
+function updateCustomSelection() { refreshSelection(); }
+
+function updateSelectionSummary() {
+  const el = document.getElementById('selectionSummary');
+  if (!el) return;
+  if (selectedPrompts.length === 0) {
+    el.innerHTML = '<div class="ss-title">Nothing selected yet</div><div class="ss-empty">Pick a platform + preset above, or check steps below.</div>';
+    return;
+  }
+  const sorted = stepsForOutcome('out-custom', selectedPrompts);
+  const order = sorted.map(function(pid) { return 'P' + PROMPT_INFO[pid].num; }).join(' → ');
+  el.innerHTML = '<div class="ss-title">' + selectedPrompts.length + ' step' + (selectedPrompts.length > 1 ? 's' : '') + ' selected · ' + describeSelection(selectedPrompts) + '</div><div>Run order: ' + order + '</div>';
 }
 
-function clearAllCustom() {
-  ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'].forEach(pid => {
-    const cb = document.getElementById('c' + pid);
-    if (cb) {
-      cb.checked = false;
-      cb.closest('.prompt-pick').classList.remove('selected');
-    }
-  });
-  updateCustomSelection();
+// Human-readable label for a selection (used in the summary + the master prompt header).
+function describeSelection(steps) {
+  const set = {}; steps.forEach(function(s) { set[s] = true; });
+  const hasMeta = META_STEPS.some(function(s) { return set[s]; });
+  const hasGoogle = GOOGLE_STEPS.some(function(s) { return set[s]; });
+  const plat = hasMeta && hasGoogle ? 'Meta + Google' : hasMeta ? 'Meta Ads' : hasGoogle ? 'Google Ads' : 'Foundation';
+  const hasAudit = set.p6 || set.p7;
+  const hasExec = set.p9 || set.p10 || set.p11;
+  let phase;
+  if (hasExec) phase = 'full track' + (hasAudit ? ' (existing client)' : ' (new client)');
+  else if (set.p8) phase = 'strategy recap';
+  else if (hasAudit) phase = 'audit';
+  else phase = 'research';
+  return plat + ' · ' + phase;
 }
 
 function autoIncludeDependencies() {
+  const sel = selectedPrompts.slice();
+  const allowed = stepsInPlatform(selectedPlatform);
   const toAdd = new Set();
-  selectedPrompts.forEach(pid => {
-    const deps = DEPENDENCIES[pid] || [];
-    deps.forEach(d => {
-      if (!selectedPrompts.includes(d)) toAdd.add(d);
+  sel.forEach(function(pid) {
+    (DEPENDENCIES[pid] || []).forEach(function(d) {
+      // Only pull deps within the active platform scope (don't drag Google into a Meta run)
+      if (sel.indexOf(d) === -1 && allowed.indexOf(d) !== -1) toAdd.add(d);
     });
   });
-  toAdd.forEach(pid => {
-    const cb = document.getElementById('c' + pid);
-    if (cb) {
-      cb.checked = true;
-      cb.closest('.prompt-pick').classList.add('selected');
-    }
-  });
-  updateCustomSelection();
+  toAdd.forEach(function(pid) { setStepChecked(pid, true); });
+  refreshSelection();
   if (toAdd.size > 0) {
-    showToast('Added ' + toAdd.size + ' dependencies: ' + Array.from(toAdd).map(p => 'Step ' + PROMPT_INFO[p].num).join(', '));
+    showToast('Added ' + toAdd.size + ' dependencies: ' + Array.from(toAdd).map(function(p) { return 'Step ' + PROMPT_INFO[p].num; }).join(', '));
   } else {
     showToast('No additional dependencies needed');
   }
@@ -8597,13 +8624,11 @@ function resetAll() {
   selectedBundle = null;
   selectedPrompts = [];
   validationState = {};
-  document.querySelectorAll('.bundle').forEach(b => b.classList.remove('selected'));
   document.querySelectorAll('.prompt-pick').forEach(p => p.classList.remove('selected'));
   document.querySelectorAll('.picker-section input[type="checkbox"]').forEach(cb => cb.checked = false);
-  document.getElementById('customPicker').classList.remove('active');
-  document.getElementById('customToggle').classList.remove('selected');
   document.getElementById('toFormBtn').disabled = true;
-  document.getElementById('bundlePreview').classList.remove('active');
+  // Reset to the default platform + new-client preset (never an empty list)
+  pickPlatform('meta');
   showPhase('A'); updateSteps(1);
 }
 
@@ -8648,55 +8673,24 @@ function updatePromptModeUI() {
   }
 }
 
-// Claude Code mode toggle handler. Shows/hides the orchestrator settings panel,
-// hides the bundle picker (replaced by the outcome dropdown), auto-populates
-// selectedPrompts from the chosen outcome so the validation/navigation pipeline
-// still works without code changes there. Persists the runtime choice in
-// localStorage per browser so operators don't re-toggle on every visit.
+// Runtime toggle handler. The platform + checklist is the single source of truth in
+// BOTH runtimes; this only reveals the Claude Code orchestrator settings panel and
+// persists the choice. The Sequential/Standalone "Mode" row applies to Claude Chat
+// only, so it's dimmed in Claude Code mode for clarity.
 function updateRuntimeUI() {
   const ccEl = document.getElementById('f_runtime_code');
   const isCC = !!(ccEl && ccEl.checked);
   const ccCtrl = document.getElementById('claudeCodeControls');
   if (ccCtrl) ccCtrl.style.display = isCC ? 'block' : 'none';
 
-  // Hide the bundle picker UI in Claude Code mode (outcome dropdown replaces it).
-  // In Claude Chat mode, restore the page to byte-identical original layout.
-  const bundleGrid = document.querySelector('.bundle-grid');
-  const customToggle = document.getElementById('customToggle');
-  const bundlePreview = document.getElementById('bundlePreview');
-  const customPicker = document.getElementById('customPicker');
-  if (bundleGrid)   bundleGrid.style.display   = isCC ? 'none' : '';
-  if (customToggle) customToggle.style.display = isCC ? 'none' : '';
-  if (bundlePreview) bundlePreview.style.display = isCC ? 'none' : '';
-  // Custom picker stays available for the 'out-custom' outcome
-  if (customPicker && isCC) {
-    const outcomeEl = document.getElementById('f_outcome');
-    const isCustom = outcomeEl && outcomeEl.value === 'out-custom';
-    customPicker.style.display = isCustom ? '' : 'none';
-  }
+  // The Sequential/Standalone mode row only affects Claude Chat output; visually de-emphasize in Claude Code.
+  const modeRow = document.querySelector('.prompt-mode-row:not(.platform-row)');
+  // (no structural change — selection model is identical across runtimes)
 
   try { localStorage.setItem('ppc_runtime', isCC ? 'claude-code' : 'claude-chat'); } catch (e) {}
 
-  // When Claude Code mode is on, auto-derive selectedPrompts from the chosen outcome
-  // so the existing goToForm/validateForm pipeline still works without modification.
-  if (isCC) {
-    const outcomeEl = document.getElementById('f_outcome');
-    const outcomeKey = outcomeEl ? outcomeEl.value : 'out-full';
-    if (outcomeKey !== 'out-custom') {
-      const auto = (typeof stepsForOutcome === 'function') ? stepsForOutcome(outcomeKey, []) : [];
-      if (auto && auto.length) {
-        selectedPrompts = auto.slice();
-        selectedBundle = outcomeKey;
-        // Mirror checkbox state so the rest of the app sees the selection consistently
-        ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'].forEach(function(pid) {
-          const cb = document.getElementById('c' + pid);
-          if (cb) cb.checked = auto.indexOf(pid) !== -1;
-        });
-      }
-    }
-    // Refresh bundle preview visually (will be hidden anyway)
-    if (typeof updateBundlePreview === 'function') { try { updateBundlePreview(); } catch (e) {} }
-  }
+  // Keep the Continue button + summary in sync (selection model is shared across runtimes).
+  if (typeof refreshSelection === 'function') { try { refreshSelection(); } catch (e) {} }
 }
 
 function toggleEl(id, show) {
@@ -8733,8 +8727,8 @@ function collectFormData() {
   // Claude Code orchestrated mode fields (no-op for Claude Chat mode)
   const runtimeEl = document.querySelector('input[name="f_runtime"]:checked');
   formData.f_runtime = runtimeEl ? runtimeEl.value : 'claude-chat';
-  const outcomeEl = document.getElementById('f_outcome');
-  formData.f_outcome = outcomeEl ? outcomeEl.value : 'out-full';
+  // Steps come from the unified checklist; outcome is always custom-derived now.
+  formData.f_outcome = 'out-custom';
   const capEl = document.getElementById('f_apify_budget_cap');
   formData.f_apify_budget_cap = capEl ? capEl.value : '10';
   const maxAdsEl = document.getElementById('f_max_ads_per_url');
@@ -8813,8 +8807,9 @@ function runPreFlightCheck(prompts) {
     if (master.length < 10000) {
       issues.push({ pid: 'master', severity: 'critical', msg: 'Master prompt suspiciously short (' + master.length + ' chars) — likely a buildPrompt error' });
     }
-    if (master.length > 200000) {
-      issues.push({ pid: 'master', severity: 'warning', msg: 'Master prompt is ' + (master.length / 1024).toFixed(1) + ' KB — may approach Claude Code context limits' });
+    // Claude Code context is ~200k TOKENS (~800k chars). Warn only when genuinely large.
+    if (master.length > 700000) {
+      issues.push({ pid: 'master', severity: 'warning', msg: 'Master prompt is ' + (master.length / 1024).toFixed(0) + ' KB (~' + Math.round(master.length / 4 / 1000) + 'k tokens) — consider splitting into per-platform runs' });
     }
     if (formData.f_client_name && master.indexOf(formData.f_client_name) === -1) {
       issues.push({ pid: 'master', severity: 'critical', msg: 'Client name not injected into master prompt' });
@@ -8964,9 +8959,13 @@ function runDiagnostics() {
     const masterFails = [];
     const allKeys = allReplacementKeys();
     masterOutcomes.forEach(function(outcome) {
+      // Mirror production: derive f_services + use the bundle's steps as the checklist selection.
+      const tdServices = [TEST_DATA.f_priority_1, TEST_DATA.f_priority_2, TEST_DATA.f_priority_3, TEST_DATA.f_priority_4, TEST_DATA.f_priority_5].filter(function(s){ return s && s.trim(); }).join(', ');
       formData = Object.assign({}, TEST_DATA, {
+        f_services: tdServices,
         f_runtime: 'claude-code',
         f_outcome: outcome,
+        f_custom_steps: (BUNDLES[outcome] ? BUNDLES[outcome].prompts.slice() : []),
         f_apify_budget_cap: '10',
         f_max_ads_per_url: '250',
         f_qc_agents_enabled: 'yes'
@@ -8974,7 +8973,8 @@ function runDiagnostics() {
       let master;
       try { master = buildPrompt('master'); }
       catch (e) { masterFails.push(outcome + ' (threw: ' + e.message + ')'); return; }
-      if (master.length > 200000) masterFails.push(outcome + ' (' + master.length + ' chars > 200k cap)');
+      // Claude Code context is ~200k TOKENS (~800k chars); warn only well past that.
+      if (master.length > 900000) masterFails.push(outcome + ' (' + master.length + ' chars — exceeds safe context budget)');
       if (master.length < 10000) masterFails.push(outcome + ' (' + master.length + ' chars — buildPrompt error)');
       const expectedSteps = stepsForOutcome(outcome, []);
       const missingMarkers = expectedSteps.filter(function(pid) {
@@ -9020,9 +9020,9 @@ function generatePromptCards() {
   }
 
   document.getElementById('outputClientName').textContent = formData.f_client_name || 'Your Client';
-  const bundleName = selectedBundle === 'custom'
-    ? 'Custom Mix · ' + selectedPrompts.length + ' prompts'
-    : (BUNDLES[selectedBundle] ? BUNDLES[selectedBundle].name : 'Custom Selection');
+  const bundleName = (typeof describeSelection === 'function')
+    ? describeSelection(selectedPrompts) + ' · ' + selectedPrompts.length + ' prompts'
+    : selectedPrompts.length + ' prompts';
   document.getElementById('outputBundleName').textContent = bundleName;
 
   const sorted = [...selectedPrompts].sort((a, b) => PROMPT_INFO[a].num - PROMPT_INFO[b].num);
@@ -9123,8 +9123,8 @@ function getInputNeededHtml(pid) {
 // CLAUDE CODE ORCHESTRATED MODE — single master prompt card
 // ============================================
 function renderMasterPromptCard() {
-  const outcomeKey = formData.f_outcome || 'out-full';
-  const outcomeLabel = (BUNDLES[outcomeKey] && BUNDLES[outcomeKey].name) || 'Custom outcome';
+  const stepList = stepsForOutcome('out-custom', formData.f_custom_steps || []);
+  const outcomeLabel = (typeof describeSelection === 'function') ? describeSelection(stepList) : (stepList.length + ' steps');
   const titleEl = document.getElementById('outputClientName');
   const bundleEl = document.getElementById('outputBundleName');
   if (titleEl) titleEl.textContent = formData.f_client_name || 'Your Client';
@@ -9136,7 +9136,6 @@ function renderMasterPromptCard() {
 
   // Build master prompt once for size + preview; copy button re-builds on click for freshness.
   const masterPrompt = buildPrompt('master');
-  const stepList = stepsForOutcome(outcomeKey, formData.f_custom_steps || []);
   const sizeK = (masterPrompt.length / 1024).toFixed(1);
 
   const container = document.getElementById('promptCards');
@@ -9293,7 +9292,7 @@ function exportRecord() {
   lines.push('**Client:** ' + (formData.f_client_name || ''));
   lines.push('**Industry:** ' + (formData.f_industry || ''));
   lines.push('**Geography:** ' + (formData.f_geography || ''));
-  lines.push('**Bundle:** ' + (selectedBundle === 'custom' ? 'Custom Mix' : (BUNDLES[selectedBundle] ? BUNDLES[selectedBundle].name : '')));
+  lines.push('**Selection:** ' + ((typeof describeSelection === 'function') ? describeSelection(selectedPrompts) : (selectedPrompts.length + ' steps')));
   lines.push('**Date:** ' + new Date().toLocaleString());
   lines.push('');
   lines.push('## Prompts Run');
@@ -9439,10 +9438,12 @@ const INTENTIONAL_BRACKETS = new Set([
   '[SERVICE]','[SNAPSHOT_SERVICE]','[PRIMARY SERVICES]','[PROVINCE / STATE]',
   '[PROVINCE / CANADA]','[CITY / REGION / COUNTRY]','[NAME]','[DATE]','[MONTH YEAR]','[YEAR]',
   // Author-fill / markup tokens the AI completes in its own output — verified by template scan, never form-injected:
-  '[4 / 5 / 6]','[CBO ON / ABO]','[CLIENT]','[COUNTRY]','[DATES]','[ID]','[N/A]','[N-1]',
+  '[8 / 9 / 10]','[CBO ON / ABO]','[CLIENT]','[COUNTRY]','[DATES]','[ID]','[N/A]','[N-1]',
   '[NEUTRAL / DELICATE]','[YES / NO]','[URL]','[REFERENCE]','[TIER-1]','[TIER-2]','[TIER-3]',
   '[WHAT CURRENT AGENCY REPORTS]','[PRIORITY 1 SERVICE NAME]','[PRIORITY 2 SERVICE NAME]',
-  '[PRIORITY 3 SERVICE NAME]','[PRIORITY 4 SERVICE NAME]'
+  '[PRIORITY 3 SERVICE NAME]','[PRIORITY 4 SERVICE NAME]',
+  // Storyboard template panel/timing markers (Step 8 visualization prompts — AI fills per ad) + retargeting-count instruction:
+  '[NUM_RETARGETING_SCRIPTS]','[X1]','[X2]','[X3]','[X4]','[X5]','[X6]','[X7]','[X8]'
 ]);
 // Replacement keys that intentionally have no template match (defensive alternates / used outside RAW_PROMPTS):
 //  - [CLIENT_NOTES] is injected via the strategist-notes preamble, not a template token
@@ -9450,7 +9451,12 @@ const INTENTIONAL_BRACKETS = new Set([
 const INTENTIONAL_DEAD_KEYS = new Set([
   '[CLIENT_NOTES]',
   '[New client / Switching from another agency / Running parallel with another agency for 30 days]',
-  '[PERSONA_DESCRIPTION]'
+  '[PERSONA_DESCRIPTION]',
+  // Defensive CPL/pixel alternates — the canonical spelling injects via a sibling key that DOES match a template
+  // (e.g. 'CAD $[X] (if known from current agency baseline)' at line ~9403 matches the P6 template).
+  '[XXXXXXXXXXXXXX] (if known)',
+  'CAD $[X] (if current agency baseline is known)',
+  'CAD $[X] (if known)'
 ]);
 // Static scan of every template: orphan placeholders (look injectable, no matching key)
 // and dead keys (a map key that appears in no template). Either signals drift.
@@ -9478,16 +9484,19 @@ function reconcilePlaceholders() {
 // Pass 2 client-doc generation. This function assembles the master prompt; it never
 // runs in Claude Chat mode and never affects per-step buildPrompt(p1..p11) behavior.
 function buildMasterPrompt(f) {
-  const outcomeKey = f.f_outcome || 'out-full';
-  const customSteps = Array.isArray(f.f_custom_steps) ? f.f_custom_steps : [];
-  const stepList = stepsForOutcome(outcomeKey, customSteps);
+  // Steps come directly from the unified checklist (selectedPrompts → f_custom_steps),
+  // topologically sorted. Named outcome bundles are still supported for Diagnostics.
+  const customSteps = Array.isArray(f.f_custom_steps) && f.f_custom_steps.length
+    ? f.f_custom_steps
+    : (BUNDLES[f.f_outcome] ? BUNDLES[f.f_outcome].prompts : []);
+  const stepList = stepsForOutcome('out-custom', customSteps);
   const budgetCap = f.f_apify_budget_cap || '10';
   const maxAds = f.f_max_ads_per_url || '250';
   const qcAgentsOn = f.f_qc_agents_enabled !== 'no';
   const clientName = (f.f_client_name && f.f_client_name.trim()) || '[CLIENT NAME]';
-  const outcomeLabel = (BUNDLES[outcomeKey] && BUNDLES[outcomeKey].name) || 'Custom outcome';
+  const outcomeLabel = (typeof describeSelection === 'function') ? describeSelection(stepList) : (stepList.length + ' steps');
   const hasScriptSteps = stepList.includes('p8') || stepList.includes('p10');
-  const emitsClientDoc = stepList.includes('p8') && outcomeKey !== 'out-production';
+  const emitsClientDoc = stepList.includes('p8');
 
   // --- Intake summary: detect blanks for the upfront interview ---
   const intakeFields = [
@@ -15329,6 +15338,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   } catch (e) {}
   if (typeof updateRuntimeUI === 'function') { try { updateRuntimeUI(); } catch (e) {} }
+  // Initialize the platform + a sensible default selection so the checklist is never empty.
+  if (typeof pickPlatform === 'function') { try { pickPlatform('meta'); } catch (e) {} }
 
   // Placeholder drift guard — logs to console at load so a future key/template mismatch is caught early.
   try {
@@ -15342,6 +15353,7 @@ populateRangeDropdowns();
 updateRetargetingHint();
 updateUgcModeVisibility();
 if (typeof updateRuntimeUI === 'function') { try { updateRuntimeUI(); } catch (e) {} }
+if (typeof pickPlatform === 'function') { try { pickPlatform('meta'); } catch (e) {} }
 
 </script>
 </body>
