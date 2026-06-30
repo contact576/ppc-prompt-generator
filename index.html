@@ -742,7 +742,7 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </label>
       </div>
 
-      <div class="prompt-mode-row">
+      <div class="prompt-mode-row" id="promptModeRow">
         <div class="prompt-mode-label">
           <strong>Mode:</strong>
           <span class="prompt-mode-hint">Choose how the selected prompts should be run. Applies to Claude Chat runtime only; ignored in Claude Code (the orchestrator handles context automatically).</span>
@@ -8474,11 +8474,19 @@ function pickPlatform(platform) {
     const show = (track === 'shared') || (platform === 'both') || (track === platform);
     g.style.display = show ? '' : 'none';
   });
-  // Drop any checked steps that aren't in this platform's scope
+  // Drop only the checked steps that aren't in this platform's scope; PRESERVE any in-scope
+  // custom selection the operator built (don't silently overwrite it with a preset).
   const allowed = stepsInPlatform(platform);
+  const hadSelection = ALL_STEP_IDS.some(function(pid) { var cb = document.getElementById('c' + pid); return cb && cb.checked; });
   ALL_STEP_IDS.forEach(function(pid) { if (allowed.indexOf(pid) === -1) setStepChecked(pid, false); });
-  // Auto-apply the new-client preset so the checklist is never empty after switching
-  applyPreset('new');
+  const stillHasSelection = ALL_STEP_IDS.some(function(pid) { var cb = document.getElementById('c' + pid); return cb && cb.checked; });
+  if (stillHasSelection) {
+    // operator's in-scope picks survive — just refresh state
+    refreshSelection();
+  } else {
+    // nothing in scope remains (fresh load or cross-platform switch) — load a sensible default
+    applyPreset('new', hadSelection);
+  }
 }
 
 // The step list for a named preset, scoped to the active platform.
@@ -8497,10 +8505,15 @@ function presetSteps(kind, platform) {
   }
 }
 
-function applyPreset(kind) {
+function applyPreset(kind, fromPlatformSwitch) {
   const target = presetSteps(kind, selectedPlatform);
   ALL_STEP_IDS.forEach(function(pid) { setStepChecked(pid, target.indexOf(pid) !== -1); });
   refreshSelection();
+  // Confirmation toast so a preset click never looks like it did nothing.
+  if (typeof showToast === 'function') {
+    if (kind === 'clear') { showToast('Cleared all steps'); }
+    else if (target.length) { showToast((fromPlatformSwitch ? 'Switched — loaded ' : 'Loaded ') + describeSelection(target) + ' · ' + target.length + ' steps'); }
+  }
 }
 
 function setStepChecked(pid, checked) {
@@ -8636,13 +8649,15 @@ function resetAll() {
 // CONDITIONAL FORM SECTIONS
 // ============================================
 function updateConditionalSections() {
-  const hasMeta = selectedPrompts.some(p => ['p2','p4','p6','p8','p9'].includes(p));
-  const hasGoogle = selectedPrompts.some(p => ['p3','p5','p7','p10'].includes(p));
+  // P10 is the Meta Creative Production brief (Meta track). P11 is the Google Build Spec (Google track).
+  const hasMeta = selectedPrompts.some(p => ['p2','p4','p6','p8','p9','p10'].includes(p));
+  const hasGoogle = selectedPrompts.some(p => ['p3','p5','p7','p11'].includes(p));
   const hasMetaAudit = selectedPrompts.includes('p6');
   const hasGoogleAudit = selectedPrompts.includes('p7');
   const hasMetaCompIntel = selectedPrompts.includes('p2');
   const hasGoogleCompIntel = selectedPrompts.includes('p3');
-  const hasCreative = selectedPrompts.includes('p9');
+  // Creative-production fields (videos/statics/UGC mode) are needed by BOTH P9 and P10.
+  const hasCreative = selectedPrompts.includes('p9') || selectedPrompts.includes('p10');
 
   toggleEl('metaSection', hasMeta);
   toggleEl('googleSection', hasGoogle);
@@ -8683,9 +8698,14 @@ function updateRuntimeUI() {
   const ccCtrl = document.getElementById('claudeCodeControls');
   if (ccCtrl) ccCtrl.style.display = isCC ? 'block' : 'none';
 
-  // The Sequential/Standalone mode row only affects Claude Chat output; visually de-emphasize in Claude Code.
-  const modeRow = document.querySelector('.prompt-mode-row:not(.platform-row)');
-  // (no structural change — selection model is identical across runtimes)
+  // The Sequential/Standalone mode row only affects Claude Chat output. In Claude Code the
+  // orchestrator handles context itself, so dim + disable that row to prevent operator confusion.
+  const modeRow = document.getElementById('promptModeRow');
+  if (modeRow) {
+    modeRow.style.opacity = isCC ? '0.4' : '1';
+    modeRow.style.pointerEvents = isCC ? 'none' : 'auto';
+    modeRow.setAttribute('aria-disabled', isCC ? 'true' : 'false');
+  }
 
   try { localStorage.setItem('ppc_runtime', isCC ? 'claude-code' : 'claude-chat'); } catch (e) {}
 
@@ -8749,8 +8769,9 @@ function validateForm() {
   if (formData.f_prompt_mode === 'standalone') {
     required.push('f_offer','f_persona_description');
   }
-  const hasMeta = selectedPrompts.some(p => ['p2','p4','p6','p8','p9'].includes(p));
-  const hasGoogle = selectedPrompts.some(p => ['p3','p5','p7','p10'].includes(p));
+  // P10 = Meta Creative Production (Meta track); P11 = Google Build Spec (Google track).
+  const hasMeta = selectedPrompts.some(p => ['p2','p4','p6','p8','p9','p10'].includes(p));
+  const hasGoogle = selectedPrompts.some(p => ['p3','p5','p7','p11'].includes(p));
 
   if (hasMeta) {
     required.push('f_meta_budget','f_meta_goal','f_meta_destination','f_num_campaigns','f_num_videos','f_num_statics');
@@ -9181,12 +9202,26 @@ function renderMasterPromptCard() {
 
 function copyMasterPrompt(btn) {
   const text = buildPrompt('master');
-  navigator.clipboard.writeText(text).then(function() {
-    const orig = btn.innerHTML;
+  const orig = btn.innerHTML;
+  const ok = function() {
     btn.innerHTML = '✓ Copied (' + (text.length / 1024).toFixed(1) + ' KB)';
     btn.classList.add('copied');
     setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2500);
-  });
+  };
+  // Fallback for non-secure contexts / clipboard rejection — never silently fail on a big payload.
+  const fallback = function() {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      const copied = document.execCommand('copy'); document.body.removeChild(ta);
+      if (copied) { ok(); } else { showToast('⚠️ Copy failed — use 👁 Preview, then select-all + copy manually.'); }
+    } catch (e) { showToast('⚠️ Copy failed — use 👁 Preview, then select-all + copy manually.'); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(ok).catch(fallback);
+  } else {
+    fallback();
+  }
 }
 
 function toggleMasterPreview(btn) {
@@ -15341,11 +15376,16 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize the platform + a sensible default selection so the checklist is never empty.
   if (typeof pickPlatform === 'function') { try { pickPlatform('meta'); } catch (e) {} }
 
-  // Placeholder drift guard — logs to console at load so a future key/template mismatch is caught early.
+  // Placeholder drift guard — logs to console AND surfaces a visible toast so a non-developer
+  // operator actually sees a key/template mismatch (console-only is invisible to them).
   try {
     const _rec = reconcilePlaceholders();
-    if (_rec.orphans.length || _rec.deadKeys.length) console.error('[PLACEHOLDER RECONCILER] drift detected:', _rec);
-    else console.log('[PLACEHOLDER RECONCILER] OK — no placeholder drift across ' + Object.keys(RAW_PROMPTS).length + ' prompts');
+    if (_rec.orphans.length || _rec.deadKeys.length) {
+      console.error('[PLACEHOLDER RECONCILER] drift detected:', _rec);
+      if (typeof showToast === 'function') showToast('⚠️ Prompt drift detected (' + _rec.orphans.length + ' orphan, ' + _rec.deadKeys.length + ' dead) — run 🔧 Diagnostics before using. A maintainer should check the console.');
+    } else {
+      console.log('[PLACEHOLDER RECONCILER] OK — no placeholder drift across ' + Object.keys(RAW_PROMPTS).length + ' prompts');
+    }
   } catch (e) { console.error('[PLACEHOLDER RECONCILER] error', e); }
 });
 // Also run if DOMContentLoaded already fired (script appears at end of body)
