@@ -693,10 +693,67 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         <button class="test-data-btn" onclick="loadTestData()">Load Test Data (EcoCare)</button>
       </div>
 
+      <!-- RUNTIME TOGGLE (Claude Chat vs Claude Code) -->
+      <div class="prompt-mode-row" style="border-bottom:1px dashed rgba(0,0,0,.12); padding-bottom:18px; margin-bottom:18px">
+        <div class="prompt-mode-label">
+          <strong>Runtime:</strong>
+          <span class="prompt-mode-hint">Where the operator will paste the prompt(s). Claude Chat = today's per-step workflow. Claude Code = one master prompt with sub-agents + creative auditor.</span>
+        </div>
+        <div class="prompt-mode-options">
+          <label class="prompt-mode-option">
+            <input type="radio" name="f_runtime" id="f_runtime_chat" value="claude-chat" onchange="updateRuntimeUI()" checked />
+            <div>
+              <div class="prompt-mode-title">Claude Chat <span class="prompt-mode-default">current</span></div>
+              <div class="prompt-mode-desc">Per-step copy/paste into a claude.ai chat. 9-11 paste points. Familiar workflow.</div>
+            </div>
+          </label>
+          <label class="prompt-mode-option">
+            <input type="radio" name="f_runtime" id="f_runtime_code" value="claude-code" onchange="updateRuntimeUI()" />
+            <div>
+              <div class="prompt-mode-title">Claude Code <span class="prompt-mode-default">orchestrated</span></div>
+              <div class="prompt-mode-desc">ONE master prompt → Claude Code session. Sub-agents QC every step + creative auditor scores scripts &ge;90/100 before strategist sees them.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- CLAUDE CODE MODE CONTROLS (hidden by default; shown when Claude Code is picked) -->
+      <div id="claudeCodeControls" style="display:none; padding:16px; background:rgba(0,0,0,.025); border-radius:8px; border:1px solid rgba(0,0,0,.08); margin-bottom:18px">
+        <div style="font-weight:600; margin-bottom:12px; font-size:14px">Claude Code orchestrator settings</div>
+
+        <div style="margin-bottom:14px">
+          <label for="f_outcome" style="display:block; margin-bottom:6px; font-weight:500; font-size:13px">Final output you want:</label>
+          <select id="f_outcome" onchange="updateRuntimeUI()" style="width:100%; padding:9px 10px; border:1px solid rgba(0,0,0,.18); border-radius:6px; background:white; font-size:13px">
+            <option value="out-full">Full pipeline (research &rarr; audit &rarr; strategy &rarr; campaign &rarr; production)</option>
+            <option value="out-recap-only">Strategy + client recap only (stops at P8 deliverable)</option>
+            <option value="out-audit-only">Audit only (foundation + research + P6/P7)</option>
+            <option value="out-research-only">Research only (P1-P5, no audit, no strategy)</option>
+            <option value="out-production">Production-ready (full chain &mdash; internal execution briefs only)</option>
+            <option value="out-custom">Custom (use the step checkboxes from the bundle picker above)</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:14px; margin-bottom:14px">
+          <div style="flex:1">
+            <label for="f_apify_budget_cap" style="display:block; margin-bottom:6px; font-weight:500; font-size:13px">Apify spend cap (USD):</label>
+            <input type="number" id="f_apify_budget_cap" value="10" min="1" max="100" step="1" style="width:100%; padding:9px 10px; border:1px solid rgba(0,0,0,.18); border-radius:6px; font-size:13px" />
+          </div>
+          <div style="flex:1">
+            <label for="f_max_ads_per_url" style="display:block; margin-bottom:6px; font-weight:500; font-size:13px">Max ads per scrape URL:</label>
+            <input type="number" id="f_max_ads_per_url" value="250" min="50" max="500" step="50" style="width:100%; padding:9px 10px; border:1px solid rgba(0,0,0,.18); border-radius:6px; font-size:13px" />
+          </div>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px">
+          <input type="checkbox" id="f_qc_agents_enabled" checked style="width:auto; cursor:pointer; margin:0" />
+          <span>Sub-agent QC at every checkpoint <em style="color:rgba(0,0,0,.5)">(recommended; uncheck for tight token budget &mdash; quality may drop)</em></span>
+        </label>
+      </div>
+
       <div class="prompt-mode-row">
         <div class="prompt-mode-label">
           <strong>Mode:</strong>
-          <span class="prompt-mode-hint">Choose how the selected prompts should be run.</span>
+          <span class="prompt-mode-hint">Choose how the selected prompts should be run. Applies to Claude Chat runtime only; ignored in Claude Code (the orchestrator handles context automatically).</span>
         </div>
         <div class="prompt-mode-options">
           <label class="prompt-mode-option">
@@ -8158,12 +8215,25 @@ let validationState = {};
 let currentClientKey = '';
 
 const BUNDLES = {
+  // --- Sequential mode (Claude Chat) bundles — pre-existing, byte-stable ---
   'full': { name: 'New Client — Full Pipeline', prompts: ['p1','p2','p3','p4','p5','p8','p9','p10','p11'] },
   'full-existing': { name: 'Existing Client — Full Audit + Rebuild', prompts: ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'] },
   'audit': { name: 'Audit Only', prompts: ['p6','p7'] },
   'research': { name: 'Research Only', prompts: ['p2','p3','p4','p5'] },
   'meta-only': { name: 'Meta Ads — Full Track', prompts: ['p1','p2','p4','p6','p8','p9','p10'] },
-  'google-only': { name: 'Google Ads — Full Track', prompts: ['p1','p3','p5','p7','p8','p11'] }
+  'google-only': { name: 'Google Ads — Full Track', prompts: ['p1','p3','p5','p7','p8','p11'] },
+
+  // --- Orchestrated mode (Claude Code) outcome-driven bundles ---
+  // Outcome bundles automatically include all upstream chain dependencies. The master
+  // prompt's final-consolidation logic decides what the FINAL output looks like
+  // (e.g., out-production includes p1-p11 but the master emits only internal
+  // execution briefs, not the heavy client-facing document).
+  'out-full':          { name: 'Full pipeline (research → audit → strategy → campaign → production)', prompts: ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'], outcome: true },
+  'out-recap-only':    { name: 'Strategy + client recap only (stops at P8 deliverable)',              prompts: ['p1','p2','p3','p4','p5','p6','p7','p8'],                  outcome: true },
+  'out-audit-only':    { name: 'Audit only (foundation + research + P6/P7)',                          prompts: ['p1','p2','p3','p4','p5','p6','p7'],                       outcome: true },
+  'out-research-only': { name: 'Research only (P1–P5, no audit, no strategy)',                        prompts: ['p1','p2','p3','p4','p5'],                                 outcome: true },
+  'out-production':    { name: 'Production-ready (full chain — internal execution briefs only)',      prompts: ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'], outcome: true },
+  'out-custom':        { name: 'Custom (uses the step checkboxes the operator picked)',               prompts: [],                                                         outcome: true, custom: true }
 };
 
 const PROMPT_INFO = {
@@ -8188,6 +8258,42 @@ const DEPENDENCIES = {
   'p10': ['p1','p2','p4','p8','p9'],
   'p11': ['p1','p3','p5','p8']
 };
+
+// Returns a deduped, topologically-sorted step list for an outcome bundle.
+// - For named outcome bundles ('out-full', 'out-recap-only', etc.): uses the bundle's prompts array.
+// - For 'out-custom': uses customStepList (the operator's checkbox selection).
+// - Sort honors DEPENDENCIES: a step appears only after all of its in-set dependencies have appeared.
+//   Dependencies that are NOT in the selected set are ignored (operator's choice respected).
+// - Within the same "ready" tier, steps are emitted in p-number order for determinism.
+// Used by buildPrompt('master') in Claude Code mode; never affects Sequential mode.
+function stepsForOutcome(outcomeKey, customStepList) {
+  const bundle = BUNDLES[outcomeKey];
+  if (!bundle) return [];
+
+  let steps = bundle.custom ? (customStepList || []).slice() : bundle.prompts.slice();
+
+  // Dedupe, preserve first occurrence
+  const seen = new Set();
+  steps = steps.filter(function(s) { if (seen.has(s)) return false; seen.add(s); return true; });
+
+  // Topological sort with DEPENDENCIES as safety net
+  const result = [];
+  const remaining = new Set(steps);
+  while (remaining.size > 0) {
+    const ready = Array.from(remaining).filter(function(s) {
+      const deps = DEPENDENCIES[s] || [];
+      // ready := every dep is either (a) not selected at all, or (b) already emitted
+      return deps.every(function(d) { return !steps.includes(d) || !remaining.has(d); });
+    });
+    if (ready.length === 0) {
+      console.warn('stepsForOutcome: cycle or missing dep detected; returning input order', { outcomeKey: outcomeKey, remaining: Array.from(remaining) });
+      return steps;
+    }
+    ready.sort(function(a, b) { return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10); });
+    for (const s of ready) { result.push(s); remaining.delete(s); }
+  }
+  return result;
+}
 
 const TEST_DATA = {
   f_client_name: 'EcoCare Home Comfort',
@@ -8542,6 +8648,57 @@ function updatePromptModeUI() {
   }
 }
 
+// Claude Code mode toggle handler. Shows/hides the orchestrator settings panel,
+// hides the bundle picker (replaced by the outcome dropdown), auto-populates
+// selectedPrompts from the chosen outcome so the validation/navigation pipeline
+// still works without code changes there. Persists the runtime choice in
+// localStorage per browser so operators don't re-toggle on every visit.
+function updateRuntimeUI() {
+  const ccEl = document.getElementById('f_runtime_code');
+  const isCC = !!(ccEl && ccEl.checked);
+  const ccCtrl = document.getElementById('claudeCodeControls');
+  if (ccCtrl) ccCtrl.style.display = isCC ? 'block' : 'none';
+
+  // Hide the bundle picker UI in Claude Code mode (outcome dropdown replaces it).
+  // In Claude Chat mode, restore the page to byte-identical original layout.
+  const bundleGrid = document.querySelector('.bundle-grid');
+  const customToggle = document.getElementById('customToggle');
+  const bundlePreview = document.getElementById('bundlePreview');
+  const customPicker = document.getElementById('customPicker');
+  if (bundleGrid)   bundleGrid.style.display   = isCC ? 'none' : '';
+  if (customToggle) customToggle.style.display = isCC ? 'none' : '';
+  if (bundlePreview) bundlePreview.style.display = isCC ? 'none' : '';
+  // Custom picker stays available for the 'out-custom' outcome
+  if (customPicker && isCC) {
+    const outcomeEl = document.getElementById('f_outcome');
+    const isCustom = outcomeEl && outcomeEl.value === 'out-custom';
+    customPicker.style.display = isCustom ? '' : 'none';
+  }
+
+  try { localStorage.setItem('ppc_runtime', isCC ? 'claude-code' : 'claude-chat'); } catch (e) {}
+
+  // When Claude Code mode is on, auto-derive selectedPrompts from the chosen outcome
+  // so the existing goToForm/validateForm pipeline still works without modification.
+  if (isCC) {
+    const outcomeEl = document.getElementById('f_outcome');
+    const outcomeKey = outcomeEl ? outcomeEl.value : 'out-full';
+    if (outcomeKey !== 'out-custom') {
+      const auto = (typeof stepsForOutcome === 'function') ? stepsForOutcome(outcomeKey, []) : [];
+      if (auto && auto.length) {
+        selectedPrompts = auto.slice();
+        selectedBundle = outcomeKey;
+        // Mirror checkbox state so the rest of the app sees the selection consistently
+        ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11'].forEach(function(pid) {
+          const cb = document.getElementById('c' + pid);
+          if (cb) cb.checked = auto.indexOf(pid) !== -1;
+        });
+      }
+    }
+    // Refresh bundle preview visually (will be hidden anyway)
+    if (typeof updateBundlePreview === 'function') { try { updateBundlePreview(); } catch (e) {} }
+  }
+}
+
 function toggleEl(id, show) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -8573,6 +8730,18 @@ function collectFormData() {
   formData.f_retargeting = retargetingEl ? retargetingEl.value : 'Yes';
   const promptModeEl = document.querySelector('input[name="f_prompt_mode"]:checked');
   formData.f_prompt_mode = promptModeEl ? promptModeEl.value : 'sequential';
+  // Claude Code orchestrated mode fields (no-op for Claude Chat mode)
+  const runtimeEl = document.querySelector('input[name="f_runtime"]:checked');
+  formData.f_runtime = runtimeEl ? runtimeEl.value : 'claude-chat';
+  const outcomeEl = document.getElementById('f_outcome');
+  formData.f_outcome = outcomeEl ? outcomeEl.value : 'out-full';
+  const capEl = document.getElementById('f_apify_budget_cap');
+  formData.f_apify_budget_cap = capEl ? capEl.value : '10';
+  const maxAdsEl = document.getElementById('f_max_ads_per_url');
+  formData.f_max_ads_per_url = maxAdsEl ? maxAdsEl.value : '250';
+  const qcEl = document.getElementById('f_qc_agents_enabled');
+  formData.f_qc_agents_enabled = (qcEl && qcEl.checked) ? 'yes' : 'no';
+  formData.f_custom_steps = (typeof selectedPrompts !== 'undefined') ? selectedPrompts.slice() : [];
   // Derived: combined services list for backward-compat with existing prompts that use [SERVICES]
   const services = [formData.f_priority_1, formData.f_priority_2, formData.f_priority_3, formData.f_priority_4, formData.f_priority_5]
     .filter(s => s && s.trim()).join(', ');
@@ -8637,6 +8806,37 @@ function saveToStorageQuiet() {
 // ============================================
 function runPreFlightCheck(prompts) {
   const issues = [];
+
+  // Claude Code orchestrated mode: validate the single master prompt instead of per-step prompts.
+  if (prompts.length === 1 && prompts[0] === 'master') {
+    const master = buildPrompt('master');
+    if (master.length < 10000) {
+      issues.push({ pid: 'master', severity: 'critical', msg: 'Master prompt suspiciously short (' + master.length + ' chars) — likely a buildPrompt error' });
+    }
+    if (master.length > 200000) {
+      issues.push({ pid: 'master', severity: 'warning', msg: 'Master prompt is ' + (master.length / 1024).toFixed(1) + ' KB — may approach Claude Code context limits' });
+    }
+    if (formData.f_client_name && master.indexOf(formData.f_client_name) === -1) {
+      issues.push({ pid: 'master', severity: 'critical', msg: 'Client name not injected into master prompt' });
+    }
+    if (master.indexOf('OPERATING RULES') === -1) {
+      issues.push({ pid: 'master', severity: 'critical', msg: 'Master prompt missing OPERATING RULES section' });
+    }
+    const outcomeKey = formData.f_outcome || 'out-full';
+    const expectedSteps = stepsForOutcome(outcomeKey, formData.f_custom_steps || []);
+    if (expectedSteps.indexOf('p8') !== -1 && master.indexOf('PASS 1 APPROVAL GATE') === -1) {
+      issues.push({ pid: 'master', severity: 'critical', msg: 'Pass 1 approval gate missing despite P8 in scope' });
+    }
+    // Leaked replacement keys (real placeholder injection misses, not allowlisted brackets)
+    const allKeys = allReplacementKeys();
+    const tokens = master.match(INJECTABLE_RX) || [];
+    const realLeaks = tokens.filter(t => allKeys.has(t)).slice(0, 5);
+    if (realLeaks.length) {
+      issues.push({ pid: 'master', severity: 'critical', msg: 'Replacement-key leakage in master prompt: ' + realLeaks.join(', ') });
+    }
+    return issues;
+  }
+
   prompts.forEach(pid => {
     const prompt = buildPrompt(pid);
     const info = PROMPT_INFO[pid];
@@ -8758,6 +8958,43 @@ function runDiagnostics() {
     } else {
       out.push({ ok: false, msg: 'Round-trip FAILED for: ' + fails.join(', ') });
     }
+
+    // 4. Master prompt round-trip — verify all 5 outcome bundles build cleanly in Claude Code mode.
+    const masterOutcomes = ['out-full', 'out-recap-only', 'out-audit-only', 'out-research-only', 'out-production'];
+    const masterFails = [];
+    const allKeys = allReplacementKeys();
+    masterOutcomes.forEach(function(outcome) {
+      formData = Object.assign({}, TEST_DATA, {
+        f_runtime: 'claude-code',
+        f_outcome: outcome,
+        f_apify_budget_cap: '10',
+        f_max_ads_per_url: '250',
+        f_qc_agents_enabled: 'yes'
+      });
+      let master;
+      try { master = buildPrompt('master'); }
+      catch (e) { masterFails.push(outcome + ' (threw: ' + e.message + ')'); return; }
+      if (master.length > 200000) masterFails.push(outcome + ' (' + master.length + ' chars > 200k cap)');
+      if (master.length < 10000) masterFails.push(outcome + ' (' + master.length + ' chars — buildPrompt error)');
+      const expectedSteps = stepsForOutcome(outcome, []);
+      const missingMarkers = expectedSteps.filter(function(pid) {
+        const num = PROMPT_INFO[pid] ? PROMPT_INFO[pid].num : null;
+        return num && master.indexOf('STEP ' + num + ' OF ') === -1;
+      });
+      if (missingMarkers.length) masterFails.push(outcome + ' (missing step markers: ' + missingMarkers.join(',') + ')');
+      if (master.indexOf('OPERATING RULES') === -1) masterFails.push(outcome + ' (OPERATING RULES missing)');
+      if (expectedSteps.indexOf('p8') !== -1 && master.indexOf('PASS 1 APPROVAL GATE') === -1) {
+        masterFails.push(outcome + ' (Pass 1 gate missing despite P8 in scope)');
+      }
+      const tokens = master.match(INJECTABLE_RX) || [];
+      const realLeaks = tokens.filter(function(t) { return allKeys.has(t); });
+      if (realLeaks.length) masterFails.push(outcome + ' (key leaks: ' + realLeaks.slice(0, 3).join(',') + ')');
+    });
+    if (masterFails.length === 0) {
+      out.push({ ok: true, msg: 'Master prompt round-trip OK — all 5 outcome bundles assemble cleanly (size cap, step markers, Pass 1 gate when P8 in scope, no key leaks).' });
+    } else {
+      out.push({ ok: false, msg: 'Master prompt issues: ' + masterFails.join(' · ') });
+    }
   } finally {
     formData = saved;
   }
@@ -8775,6 +9012,13 @@ function runDiagnostics() {
 }
 
 function generatePromptCards() {
+  // === Claude Code orchestrated mode: render a single master prompt card and bail ===
+  // Sequential (Claude Chat) flow below stays byte-identical to the original.
+  if (formData.f_runtime === 'claude-code') {
+    renderMasterPromptCard();
+    return;
+  }
+
   document.getElementById('outputClientName').textContent = formData.f_client_name || 'Your Client';
   const bundleName = selectedBundle === 'custom'
     ? 'Custom Mix · ' + selectedPrompts.length + ' prompts'
@@ -8873,6 +9117,90 @@ function getInputNeededHtml(pid) {
   if (pid === 'p7') inputs.push('Adzviser MCP must be connected to Google Ads account');
   if (inputs.length === 0) return '';
   return '<div class="input-needed"><strong>Required Setup:</strong> ' + inputs.join(' · ') + '</div>';
+}
+
+// ============================================
+// CLAUDE CODE ORCHESTRATED MODE — single master prompt card
+// ============================================
+function renderMasterPromptCard() {
+  const outcomeKey = formData.f_outcome || 'out-full';
+  const outcomeLabel = (BUNDLES[outcomeKey] && BUNDLES[outcomeKey].name) || 'Custom outcome';
+  const titleEl = document.getElementById('outputClientName');
+  const bundleEl = document.getElementById('outputBundleName');
+  if (titleEl) titleEl.textContent = formData.f_client_name || 'Your Client';
+  if (bundleEl) bundleEl.textContent = 'Claude Code · ' + outcomeLabel;
+
+  // Pre-flight: validate the master prompt before rendering the copy button.
+  const preflightIssues = runPreFlightCheck(['master']);
+  displayPreFlightResults(preflightIssues);
+
+  // Build master prompt once for size + preview; copy button re-builds on click for freshness.
+  const masterPrompt = buildPrompt('master');
+  const stepList = stepsForOutcome(outcomeKey, formData.f_custom_steps || []);
+  const sizeK = (masterPrompt.length / 1024).toFixed(1);
+
+  const container = document.getElementById('promptCards');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const stepBadges = stepList.map(function(pid) {
+    return '<span class="tag time" style="margin-right:4px">' + (PROMPT_INFO[pid] ? 'P' + PROMPT_INFO[pid].num : pid) + '</span>';
+  }).join('');
+
+  const card = document.createElement('div');
+  card.className = 'prompt-card';
+  card.id = 'card_master';
+  card.innerHTML =
+    '<div class="prompt-card-hd">' +
+      '<div>' +
+        '<div class="prompt-num">' +
+          '<span class="prompt-num-badge">🤖</span>' +
+          '<span>Master Prompt · ' + stepList.length + ' steps wrapped</span>' +
+        '</div>' +
+        '<div class="prompt-card-title">Claude Code Orchestrated Mode</div>' +
+        '<div class="prompt-card-sub">Outcome: <strong>' + outcomeLabel + '</strong> &middot; Size: <strong>' + sizeK + ' KB</strong></div>' +
+        '<div style="margin-top:8px">' + stepBadges + '</div>' +
+      '</div>' +
+      '<span class="validation-status pending">Ready</span>' +
+    '</div>' +
+    '<div class="input-needed" style="margin:14px 0; padding:14px; background:rgba(0,0,0,.03); border-radius:8px; border:1px solid rgba(0,0,0,.06)">' +
+      '<strong>How to use:</strong> ' +
+      '<ol style="margin:8px 0 0 0; padding-left:22px; line-height:1.6">' +
+        '<li>Copy the master prompt below.</li>' +
+        '<li>Open Claude Code (desktop app or claude.ai/code in a browser) on this repo or any session with Apify + Adzviser + Meta Ads + Google Drive MCPs available.</li>' +
+        '<li>Paste the prompt. Answer the upfront interview if Claude asks for it.</li>' +
+        '<li>Walk away. Claude will stop only for: (a) Pass 1 script approval, (b) Phase B image upload &mdash; or if a rental Apify actor needs first-time permission approval.</li>' +
+      '</ol>' +
+    '</div>' +
+    '<div class="prompt-actions">' +
+      '<button class="btn-primary" onclick="copyMasterPrompt(this)">📋 Copy Master Prompt</button>' +
+      '<button class="btn-secondary" onclick="toggleMasterPreview(this)">👁 Preview (' + sizeK + ' KB)</button>' +
+    '</div>' +
+    '<div class="prompt-text-box" id="text_master" style="display:none">' + escapeHtml(masterPrompt) + '</div>';
+  container.appendChild(card);
+}
+
+function copyMasterPrompt(btn) {
+  const text = buildPrompt('master');
+  navigator.clipboard.writeText(text).then(function() {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copied (' + (text.length / 1024).toFixed(1) + ' KB)';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2500);
+  });
+}
+
+function toggleMasterPreview(btn) {
+  const box = document.getElementById('text_master');
+  if (!box) return;
+  if (box.style.display === 'none') {
+    box.style.display = 'block';
+    btn.innerHTML = '👁 Hide Preview';
+  } else {
+    box.style.display = 'none';
+    const text = buildPrompt('master');
+    btn.innerHTML = '👁 Preview (' + (text.length / 1024).toFixed(1) + ' KB)';
+  }
 }
 
 function copyPrompt(pid, btn) {
@@ -9140,7 +9468,280 @@ function reconcilePlaceholders() {
   return { orphans: orphans, deadKeys: [...deadKeys].filter(k => !INTENTIONAL_DEAD_KEYS.has(k)) };
 }
 
+// ============================================
+// MASTER PROMPT ASSEMBLY (Claude Code orchestrated mode)
+// ============================================
+// In Sequential (Claude Chat) mode the operator copies N separate per-step prompts.
+// In Orchestrated (Claude Code) mode the operator copies ONE master prompt that wraps
+// the selected step bodies with: mission header, operating rules, sub-agent roster,
+// creative-ad-auditor loop, Pass 1 approval gate, Phase B image-upload protocol, and
+// Pass 2 client-doc generation. This function assembles the master prompt; it never
+// runs in Claude Chat mode and never affects per-step buildPrompt(p1..p11) behavior.
+function buildMasterPrompt(f) {
+  const outcomeKey = f.f_outcome || 'out-full';
+  const customSteps = Array.isArray(f.f_custom_steps) ? f.f_custom_steps : [];
+  const stepList = stepsForOutcome(outcomeKey, customSteps);
+  const budgetCap = f.f_apify_budget_cap || '10';
+  const maxAds = f.f_max_ads_per_url || '250';
+  const qcAgentsOn = f.f_qc_agents_enabled !== 'no';
+  const clientName = (f.f_client_name && f.f_client_name.trim()) || '[CLIENT NAME]';
+  const outcomeLabel = (BUNDLES[outcomeKey] && BUNDLES[outcomeKey].name) || 'Custom outcome';
+  const hasScriptSteps = stepList.includes('p8') || stepList.includes('p10');
+  const emitsClientDoc = stepList.includes('p8') && outcomeKey !== 'out-production';
+
+  // --- Intake summary: detect blanks for the upfront interview ---
+  const intakeFields = [
+    { key: 'f_client_name', label: 'Client name' },
+    { key: 'f_industry', label: 'Industry' },
+    { key: 'f_geography', label: 'Geography' },
+    { key: 'f_priority_1', label: 'Top-priority service' },
+    { key: 'f_meta_budget', label: 'Meta monthly budget (CAD)' },
+    { key: 'f_google_budget', label: 'Google monthly budget (CAD)' },
+    { key: 'f_competitor_names', label: 'Known competitor handles' },
+    { key: 'f_offer', label: 'Primary offer' },
+    { key: 'f_persona_description', label: 'ICP / persona' },
+    { key: 'f_meta_urls', label: 'Meta Ad Library search URLs' },
+    { key: 'f_meta_destination', label: 'Meta conversion destination' }
+  ];
+  const intakeProvided = [];
+  const intakeGaps = [];
+  intakeFields.forEach(function(fld) {
+    const v = f[fld.key];
+    if (v && String(v).trim()) {
+      intakeProvided.push('- ' + fld.label + ': ' + String(v).trim().split('\n')[0].slice(0, 200));
+    } else {
+      intakeGaps.push('- ' + fld.label);
+    }
+  });
+
+  // --- Section 1: Mission header ---
+  const sec1 = [
+    '═══════════════════════════════════════',
+    '# PPC GURU — ORCHESTRATED RESEARCH RUN',
+    '═══════════════════════════════════════',
+    '',
+    '**Client:** ' + clientName,
+    '**Outcome requested:** ' + outcomeLabel,
+    '**Steps to execute:** ' + stepList.join(' → '),
+    '**Runtime:** Claude Code (this session). MCPs available: Apify, Adzviser, Meta Ads, Google Ads, Google Drive.',
+    '**Operator:** Has filled intake and stepped away. They return only for: (a) one upfront interview reply, (b) Pass 1 script approval, (c) Phase B image upload + BUILD DOC confirmation.',
+    ''
+  ].join('\n');
+
+  // --- Section 2: Operating rules ---
+  const sec2 = [
+    '═══════════════════════════════════════',
+    '# OPERATING RULES — READ AND INTERNALIZE',
+    '═══════════════════════════════════════',
+    '',
+    '## 1. APIFY BUDGET CAP (hard ceiling)',
+    'Total Apify spend across this run must not exceed **$' + budgetCap + '**. Per-URL scrape cap: **' + maxAds + ' ads**. If you would exceed either, STOP and emit a failure brief naming the step + projected cost.',
+    '',
+    '## 2. VAULT DISCIPLINE',
+    'Every step saves its FULL output to Google Drive folder "PPC Guru Research Vault / ' + clientName + '" before continuing. After save, confirm in one line: "✅ Vault updated: <filename>". If Drive save fails, STOP — never continue without the save.',
+    '',
+    '## 3. TRACE-OR-STOP (numbers + claims)',
+    'Every number, competitor name, benchmark, and dollar figure must trace to a prior chain source (a vault file or this prompt). If it cannot be traced, replace with qualitative language ("most customers" not "73%"). Never fabricate to fill a gap.',
+    '',
+    '## 4. ERROR-STOP, DO NOT FABRICATE FORWARD',
+    'If any MCP call fails or any step cannot complete with real data, STOP and emit a failure brief naming the step + specific failure. Do not invent data to keep the chain moving.',
+    '',
+    '## 5. SUB-AGENT TOKEN ECONOMY',
+    'When invoking sub-agents (see Sub-Agent Orchestration Plan), give each sub-agent ONLY the slice of context it needs — never dump the entire chain. Sub-agents have bounded contexts by design.',
+    '',
+    '## 6. CREATIVE-AD-AUDITOR SKILL IS AUTHORITATIVE',
+    'For any creative script (P8 video or static), invoke the `creative-ad-auditor` skill via sub-agent to score 0–100. Scripts must reach **≥90/100** to ship to the strategist. See Creative Production Protocol below for the revision loop.',
+    '',
+    '## 7. MCP AUTHORIZATION (the one legitimate mid-run pause besides Pass 1)',
+    'If a rental Apify actor needs first-time permission approval, emit the exact approval link, set state "AWAITING AUTHORIZATION", and pause. Resume from the same step using the vault when the operator replies AUTHORIZED.',
+    ''
+  ].join('\n');
+
+  // --- Section 3: Embedded intake summary ---
+  const sec3 = [
+    '═══════════════════════════════════════',
+    '# INTAKE PROVIDED (from generator form)',
+    '═══════════════════════════════════════',
+    '',
+    intakeProvided.length ? intakeProvided.join('\n') : '(no intake fields populated — interview block below MUST gather everything)',
+    '',
+    intakeGaps.length ? '## Intake GAPS — ASK BEFORE STARTING (see Upfront Interview Block below)' : '## All critical intake fields populated; no interview needed.',
+    intakeGaps.length ? intakeGaps.join('\n') : '',
+    '',
+    f.f_additional_notes && f.f_additional_notes.trim() ? '## Additional notes from strategist (AUTHORITATIVE):\n' + f.f_additional_notes.trim() + '\n' : ''
+  ].filter(function(line) { return line !== ''; }).join('\n');
+
+  // --- Section 4: Upfront interview block ---
+  const sec4 = intakeGaps.length ? [
+    '',
+    '═══════════════════════════════════════',
+    '# UPFRONT INTERVIEW — ASK ONCE, BATCHED',
+    '═══════════════════════════════════════',
+    '',
+    'Before executing any step, ask the operator a SINGLE batched message containing every question needed to fill the intake gaps above. Format your message exactly like this:',
+    '',
+    '```',
+    'Before I start, I need ' + intakeGaps.length + ' answers (one batched message — please reply with all):',
+    '',
+    '1. [field from gaps list]: ?',
+    '2. [field from gaps list]: ?',
+    '...',
+    '```',
+    '',
+    'After the operator replies, treat their answers as the authoritative values for those fields (overriding any defaults). Then proceed to Step 1 without further interruption — until you reach the Pass 1 gate or the Phase B image-upload step.',
+    ''
+  ].join('\n') : '';
+
+  // --- Section 5: Sub-agent orchestration plan ---
+  const sec5 = qcAgentsOn ? [
+    '═══════════════════════════════════════',
+    '# SUB-AGENT ORCHESTRATION PLAN',
+    '═══════════════════════════════════════',
+    '',
+    'Spawn these sub-agents at the checkpoints described. Each sub-agent gets a SCOPED context (only what it needs), not the full chain.',
+    '',
+    '| Sub-agent | When | Input | Output | Budget |',
+    '|---|---|---|---|---|',
+    '| **competitor-filter** | After Phase A scrape in P2 | Raw scrape (~250 ads × N URLs) | EXACT/ADJACENT/IRRELEVANT classification per advertiser, with kill-reasons | ~3k/1k |',
+    '| **research-qc** | After each of P2, P3, P4, P5 | The step\'s output | "Pass" OR list of weak/unsupported claims needing re-research | ~5k/0.5k |',
+    '| **audit-qc** | After P6/P7 if they ran | Audit output | "Pass" OR missing-data flags | ~5k/0.5k |',
+    '| **creative-auditor** | Per script draft (calls `creative-ad-auditor` skill) | One script + the rubric | Score 0–100 + per-criterion breakdown + revision hints | skill-internal (~2-4k each) |',
+    '| **storyboard-validator** | Per storyboard prompt | Storyboard + original script | Pass/fail on: 8–10 slides, word-by-word coverage, visual + audio direction per slide | ~3k/0.5k |',
+    '| **document-completeness-qc** | After Pass 2 draft | Full Pass 2 markdown + section spec | Missing-section flags, unsupported numbers, Beautifier marker errors | ~10k/1k |',
+    '',
+    'When a sub-agent reports a failure, the main orchestrator either: (a) self-revises and re-invokes (up to 3 attempts where the plan specifies), or (b) STOPS and emits a failure brief if no revision path exists.',
+    ''
+  ].join('\n') : '═══════════════════════════════════════\n# SUB-AGENT QC: DISABLED BY OPERATOR\n═══════════════════════════════════════\n\nThe operator disabled sub-agent QC for this run. Main orchestrator handles QC inline using protocol checks only (Trace-or-Stop, Vault discipline, Error-stop). Quality may be lower than a QC-enabled run; flag any low-confidence outputs in the final brief.\n';
+
+  // --- Section 6: Step execution chain (the actual work) ---
+  // For each step in stepList: take its raw prompt, run buildReplacements on it,
+  // strip per-step vault headers/footers (master has unified vault discipline above),
+  // wrap with ═══ STEP N → N+1 ═══ separator including vault-save instruction.
+  const stepBodies = stepList.map(function(pid, idx) {
+    let body = RAW_PROMPTS[pid] || '';
+    // Apply per-step replacements with form values
+    const reps = buildReplacements(pid, f);
+    Object.keys(reps).forEach(function(key) { body = body.split(key).join(reps[key]); });
+    const stepNum = PROMPT_INFO[pid] ? PROMPT_INFO[pid].num : pid;
+    const stepName = PROMPT_INFO[pid] ? PROMPT_INFO[pid].name : pid;
+    const isLast = idx === stepList.length - 1;
+    const sep = isLast ?
+      '\n\n═══════════════════════════════════════\n# ✅ STEP ' + stepNum + ' COMPLETE — END OF CHAIN\n═══════════════════════════════════════\n\nThis is the final step of this run. After completing it, run the final-consolidation logic below and produce the final deliverable per the chosen outcome.\n' :
+      '\n\n═══════════════════════════════════════\n# ═══ STEP ' + stepNum + ' → STEP ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' ═══\n═══════════════════════════════════════\n\n1. Save the Step ' + stepNum + ' full output to Drive (folder "PPC Guru Research Vault / ' + clientName + '", filename per the Step ' + stepNum + ' vault spec). Confirm: "✅ Vault updated: <filename>".\n2. Run a one-line self-check: did this step produce all sections it was asked to? If no — STOP and emit a failure brief. If yes — continue to Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + '.\n' + (qcAgentsOn && ['p2','p3','p4','p5'].includes(pid) ? '3. Invoke `research-qc` sub-agent on the Step ' + stepNum + ' output. If it returns "Pass" → continue. If it returns weak-claim flags → patch the weak claims using one targeted MCP re-query (within budget cap), re-save vault, then continue.\n' : '') + (qcAgentsOn && ['p6','p7'].includes(pid) ? '3. Invoke `audit-qc` sub-agent on the Step ' + stepNum + ' output. If "Pass" → continue. If missing-data flags → mark them in the output and continue (audit data is best-effort).\n' : '');
+    return '═══════════════════════════════════════\n# STEP ' + stepNum + ' OF ' + stepList.length + ' — ' + stepName + '\n═══════════════════════════════════════\n\n' + body + sep;
+  }).join('\n');
+
+  const sec6 = [
+    '═══════════════════════════════════════',
+    '# STEP EXECUTION CHAIN (begin here)',
+    '═══════════════════════════════════════',
+    '',
+    'Execute each step in order. Between steps, run the vault-save + self-check protocol shown in the ═══ STEP N → N+1 ═══ separator. Do not skip ahead and do not parallelize the steps — they have data dependencies.',
+    '',
+    stepBodies
+  ].join('\n');
+
+  // --- Section 7: Creative production protocol (only when scripts in scope) ---
+  const sec7 = hasScriptSteps ? [
+    '',
+    '═══════════════════════════════════════',
+    '# CREATIVE PRODUCTION PROTOCOL — 90/100 GATE',
+    '═══════════════════════════════════════',
+    '',
+    'When Step 8 reaches Pass 1 (creative scripts) — BEFORE showing anything to the strategist — every script must go through this loop:',
+    '',
+    '1. **Draft** the script using Step 1 brand voice + Step 2 competitor decoded patterns + Step 4 cheat codes + the 1-second rule + service-noun gate + archetype-required-ingredient rule.',
+    '2. **Audit** by invoking the `creative-ad-auditor` skill via sub-agent. Pass the skill ONLY: (a) the script, (b) the client brand voice from Step 1, (c) the target ICP from Step 1. The skill returns a score 0–100 + per-criterion breakdown.',
+    '3. **Score gate:**',
+    '   - **≥90/100** → script approved, add to Pass 1 batch with verdict "✓ Scored XX/100"',
+    '   - **<90/100** → revise targeting the lowest-scoring criteria, re-audit (attempt 2 of 3)',
+    '   - After **attempt 3** still <90/100 → surface the best attempt with verdict "⚠ Scored XX/100. Missed: [criteria list]"',
+    '4. **Storyboard / static visual prompt** for each approved script — see the upgraded 8-10 panel storyboard derivation inside the Step 8 visualization prompts section. Validation rules apply: 8/9/10 panels, word-by-word coverage, audio cue + final video aspect ratio per panel.',
+    '5. **Storyboard-validator sub-agent** runs on each storyboard. Fails → regenerate storyboard (max 2 retries) → if still failing, surface with the failure note.',
+    ''
+  ].join('\n') : '';
+
+  // --- Section 8: Pass 1 approval gate ---
+  const sec8 = hasScriptSteps ? [
+    '═══════════════════════════════════════',
+    '# PASS 1 APPROVAL GATE — HARD STOP',
+    '═══════════════════════════════════════',
+    '',
+    'Once all scripts have been audited (≥90 or 3-attempts exhausted) and storyboards validated, emit exactly this block — do NOT continue past it without an explicit GO from the operator:',
+    '',
+    '```',
+    '═══ PASS 1 APPROVAL — SCRIPTS + VISUAL PROMPTS ═══',
+    '',
+    '[For each ad set:]',
+    '  ── Ad Set N · Service Name ──',
+    '  Video Vn: [Hook / Message / Offer / CTA]',
+    '  Audit verdict: ✓ Scored 93/100 (passed all gates)',
+    '  Storyboard prompt: <fenced 8-10 slide prompt, copy-paste ready>',
+    '',
+    '  Static Sn: [Hook / Message / Offer / CTA / Highlight / Archetype]',
+    '  Audit verdict: ✓ Scored 91/100',
+    '  Visual prompt: <fenced static prompt, ready for GPT Image gen>',
+    '',
+    'Audit Log (collapsed): N scripts drafted, M revisions performed.',
+    '  Reply REVEAL_AUDIT_LOG to see full per-script scorecards.',
+    '',
+    'Reply with exactly one of:',
+    '  GO — approve all scripts/prompts; proceed to image-upload phase',
+    '  REVISE: <your changes> — apply changes (override the audit), re-show, wait for GO',
+    '═══════════════════════════════════════════════════',
+    '```',
+    '',
+    'On REVISE: silently apply changes, re-run the auditor on revised scripts, re-show the gate block. Do not advance until GO.',
+    ''
+  ].join('\n') : '';
+
+  // --- Section 9: Phase B image upload protocol ---
+  const sec9 = (hasScriptSteps && emitsClientDoc) ? [
+    '═══════════════════════════════════════',
+    '# PHASE B — IMAGE UPLOAD → BUILD DOC',
+    '═══════════════════════════════════════',
+    '',
+    'After the operator replies GO, switch to Phase B:',
+    '',
+    '1. Emit: "Scripts approved. Take the storyboard/static prompts to your image-gen tool (e.g. GPT Image gen 2.0). When you have the generated images, paste them here (one at a time or in one batch), then reply BUILD DOC to generate the client-facing document with creatives embedded."',
+    '2. As the operator pastes each image, invoke the `creative-ad-auditor` skill ONE more time per image — auditing the RENDERED visual against the original script intent (catches: text rendered wrong by AI, layout mismatch, off-brand colors). Flag any issues; the operator decides whether to re-render or proceed.',
+    '3. When the operator replies BUILD DOC, advance to Pass 2 (client document).',
+    ''
+  ].join('\n') : '';
+
+  // --- Section 10: Pass 2 client document protocol ---
+  const sec10 = emitsClientDoc ? [
+    '═══════════════════════════════════════',
+    '# PASS 2 — CLIENT-FACING DOCUMENT',
+    '═══════════════════════════════════════',
+    '',
+    'On BUILD DOC, generate the full client-facing document using the Step 8 OUTPUT STRUCTURE (already present in the Step 8 body above). In addition:',
+    '',
+    '- Embed the operator-uploaded images in their corresponding script cards (Section 5), each captioned "Final creative for Ad [N][L]-V/S[#]".',
+    '- Prepend a **Strategist Review Brief** to the top of the document (one screen, four sections):',
+    '  - 🟢 **Confident decisions** — one line each, what was chosen + the source step',
+    '  - 🟡 **Judgment calls** — option chosen + the alternative considered + why this won',
+    '  - 🔴 **Risky outputs** — anything that fell back to qualitative language, or scripts that scored <90 and were surfaced flagged, or any chain gap',
+    '  - **MCP audit** — Apify total spend, datasets created (IDs), any actor that needed permission approval',
+    '- Before emitting Pass 2, invoke `document-completeness-qc` sub-agent: pass it the draft + the Step 8 section spec. Fix anything it flags (missing sections, unsupported numbers, broken Beautifier markers) before emitting.',
+    '- Final output: ONE markdown code fence containing the complete Pass 2 document, ready for the operator to paste into the Beautifier.',
+    ''
+  ].join('\n') : [
+    '═══════════════════════════════════════',
+    '# FINAL CONSOLIDATION (no client doc this run)',
+    '═══════════════════════════════════════',
+    '',
+    'The chosen outcome (' + outcomeLabel + ') does not include a client-facing document. After the last step in the chain, emit a brief one-page consolidation listing: outcomes produced + vault filenames + key handoff numbers. No Pass 1/Pass 2 gates needed.',
+    ''
+  ].join('\n');
+
+  return [sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
+}
+
 function buildPrompt(pid) {
+  // === Claude Code orchestrated mode: single master prompt ===
+  if (pid === 'master') return buildMasterPrompt(formData);
+
   let raw = RAW_PROMPTS[pid] || '';
   const f = formData;
   const replacements = buildReplacements(pid, f);
@@ -14717,6 +15318,18 @@ document.addEventListener('DOMContentLoaded', function() {
   if (numVidEl) numVidEl.addEventListener('change', updateUgcModeVisibility);
   updateRetargetingHint();
   updateUgcModeVisibility();
+
+  // Restore Claude Code runtime preference from localStorage and apply UI state.
+  // Defaults to claude-chat (current behavior) for any operator who has never toggled.
+  try {
+    const savedRuntime = localStorage.getItem('ppc_runtime');
+    if (savedRuntime === 'claude-code') {
+      const ccRadio = document.getElementById('f_runtime_code');
+      if (ccRadio) ccRadio.checked = true;
+    }
+  } catch (e) {}
+  if (typeof updateRuntimeUI === 'function') { try { updateRuntimeUI(); } catch (e) {} }
+
   // Placeholder drift guard — logs to console at load so a future key/template mismatch is caught early.
   try {
     const _rec = reconcilePlaceholders();
@@ -14728,6 +15341,7 @@ document.addEventListener('DOMContentLoaded', function() {
 populateRangeDropdowns();
 updateRetargetingHint();
 updateUgcModeVisibility();
+if (typeof updateRuntimeUI === 'function') { try { updateRuntimeUI(); } catch (e) {} }
 
 </script>
 </body>
