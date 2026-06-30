@@ -4,9 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A single-file (`index.html`, ~640 KB) browser app the PPC Guru agency uses to assemble an 11-step copy-paste prompt chain (P1–P11) for client paid-media research. The app itself does no research — it injects ~40 intake fields into prompt templates, validates everything, and pastes the prompts into a separate Claude chat (with Apify + Adzviser + Meta MCPs + Google Drive connector) that does the actual work and returns markdown reports. A built-in **Beautifier** then renders those reports into a branded client-facing PDF.
+A single-file (`index.html`, ~670 KB) browser app the PPC Guru agency uses to assemble an 11-step prompt chain (P1–P11) for client paid-media research. The app itself does no research — it injects ~40 intake fields into prompt templates, validates everything, and the operator pastes the result into a separate Claude session (with Apify + Adzviser + Meta/Google Ads MCPs + Google Drive connector) that does the actual work and returns markdown reports. A built-in **Beautifier** then renders those reports into a branded client-facing PDF.
 
 No build step. No framework. No dependencies. Open `index.html` in a browser and it just runs.
+
+## Two runtimes — the central architecture fact
+
+A top-of-page toggle (`f_runtime`) decides what the app *outputs*. This is the most important thing to understand before editing anything in the selection/output path:
+
+- **Claude Chat** (`claude-chat`, default) — the original behavior: N separate per-step prompts the operator copies one at a time. `buildPrompt(p1)…buildPrompt(p11)` produce these. **Must stay byte-identical to historical output** — it's the proven path.
+- **Claude Code** (`claude-code`) — ONE master prompt that wraps the selected step bodies for autonomous end-to-end execution in a Claude Code session, with embedded sub-agent QC + the `creative-ad-auditor` skill scoring every creative script ≥90/100 before a human sees it. Built by `buildMasterPrompt(f)` (dispatched from `buildPrompt('master')`).
+
+`selectedPrompts` (the checklist selection) is the single source of truth in BOTH runtimes. Any edit to the selection or output pipeline must be reasoned about twice — once per runtime — and `runDiagnostics` smoke-tests both.
+
+## Phase A selection model (platform-separated)
+
+The step picker is organized by **platform**, because ~99% of runs are single-platform. Don't reintroduce the old "bundle grid + hidden custom picker" model — it was removed for being confusing.
+
+- `pickPlatform('meta'|'google'|'both')` — filters the checklist groups (`.stage-group[data-track=…]`), drops out-of-scope checked steps but **preserves in-scope custom selections**, and loads a default only when nothing in scope remains.
+- `applyPreset(kind)` — `new` / `existing` (+audit) / `research` / `audit` / `recap` / `clear`, computed per active platform by `presetSteps`.
+- `refreshSelection()` — the core: reads checkboxes → `selectedPrompts` → enables/disables Continue (`#toFormBtn`) → updates the live summary. Call this after any selection mutation.
+- Platform→step mapping lives in `META_STEPS` / `GOOGLE_STEPS` (module constants). **P10 = Meta** (Creative Production), **P11 = Google** (Build Spec) — this trips people up; see Bug class 6.
 
 ## Two-folder setup — IMPORTANT
 
@@ -38,8 +56,12 @@ Search for these names with `Grep` to land on the right section of `index.html`:
 | `reconcilePlaceholders()` | Runs at load. Logs orphan placeholders (token in template but no map key) and dead keys (map key in no template). The `SEARCH`-keyword bug class was killed by this. |
 | `runPreFlightCheck`, `runDiagnostics` | Pre-flight is automatic before copy; Diagnostics is the user-clickable button on the output page. |
 | `TEST_DATA`, `loadTestData()` | EcoCare fixture used by Diagnostics and for manual testing. |
-| `BUNDLES`, `PROMPT_INFO`, `DEPENDENCIES` | Run-order rules. `DEPENDENCIES` is authoritative — never let a template say it depends on a downstream step. |
-| `_BEAUTIFIER_HTML` (~line 9381) | The entire Beautifier rendered HTML+CSS+JS as a single template literal. Care: escape `\`` and `\${` inside; doubled backslashes for regex literals. |
+| `BUNDLES`, `PROMPT_INFO`, `DEPENDENCIES` | Run-order rules. `DEPENDENCIES` is authoritative — never let a template say it depends on a downstream step. `BUNDLES` also holds the `out-*` outcome bundles used only by Diagnostics. |
+| `buildMasterPrompt(f)` | Claude Code mode only. Assembles ONE master prompt: 10 sections (mission · operating rules · embedded intake · upfront interview · sub-agent roster · step chain · creative 90/100 protocol · Pass 1 gate · Phase B image upload · Pass 2 client doc). Concatenates step bodies via `buildReplacements` + strips per-step vault headers. |
+| `stepsForOutcome(key, customSteps)` | Topo-sorts a step list against `DEPENDENCIES` (cycle-safe). `'out-custom'` uses the live checklist; named bundles use their `prompts`. Used by the master prompt + the selection summary. |
+| `pickPlatform`, `applyPreset`, `presetSteps`, `refreshSelection`, `setStepChecked`, `describeSelection`, `META_STEPS`, `GOOGLE_STEPS` | The Phase A platform-separated picker (see "Phase A selection model"). |
+| `updateRuntimeUI`, `renderMasterPromptCard`, `copyMasterPrompt` | Runtime toggle handler + the Claude Code output card. `updateConditionalSections` + `validateForm` both carry a platform→step map that must agree with `META_STEPS` (Bug class 6). |
+| `_BEAUTIFIER_HTML` (~line 9400+) | The entire Beautifier rendered HTML+CSS+JS as a single template literal. Care: escape `\`` and `\${` inside; doubled backslashes for regex literals. |
 | `gmRenderToken`, `gmRenderChart` | Beautifier markdown-cue dispatcher (handles `:::chart`, `:::statstrip`, `:::timeline`, etc.). Any new `:::block-type` MUST get a case here AND in `GM_TOP_LEVEL_TYPES`. |
 | `renderExecSummary`, `renderScripts`, etc. | Bespoke section renderers. **DANGER ZONE** — see "Bug classes" below. |
 | `Research Vault` block in `buildPrompt` | Injects "save to Drive" footer in every prompt and "load from Drive" header in P6–P11. Lets steps run in fresh chats. |
@@ -55,6 +77,10 @@ Search for these names with `Grep` to land on the right section of `index.html`:
 4. **PowerShell em-dash mojibake.** `Get-Content -Raw` guesses ANSI on PS5.1 and corrupts em-dashes. Always read this file with `[System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)`. If you see suspicious encoding issues, this is the cause 90% of the time.
 
 5. **`get-dataset-items` field projection drops nested arrays** (Apify-specific, relevant when editing P2's scrape instructions). Use `omit` for bulky fields instead of `fields` selection.
+
+6. **Platform→step classification is duplicated across THREE places and must stay in sync.** `META_STEPS`/`GOOGLE_STEPS` (the picker), the `hasMeta`/`hasGoogle` arrays in `updateConditionalSections` (reveals form sections), and the same arrays in `validateForm` (required fields). A June 2026 bug had P10 (Meta Creative) classified as Google in two of them → the creative-production step shipped un-validated and revealed the wrong form section. When you add/move a step's platform, update all three.
+
+7. **Master-prompt size is in CHARS, not tokens.** A full 11-step master is ~335k chars ≈ 84k tokens — well within Claude Code's window. Diagnostics/pre-flight thresholds are char-based (warn ~700k, fail ~900k). Don't "fix" a large master by capping at 200k chars (an earlier mistake that failed Diagnostics on legitimate full runs).
 
 ## Verify before recommending or deploying
 
@@ -73,6 +99,17 @@ $open = ([regex]::Matches($c, '\{')).Count; $close = ([regex]::Matches($c, '\}')
 Then open the local file in Chrome and click **🔧 Run Diagnostics** on the output page — that's the in-app reconciler + round-trip test.
 
 The `qc-ppc-generator` skill encodes the full 5-pass audit (structural + placeholder + renderer-trap + TEST_DATA round-trip + live render smoke); invoke it before any deploy that touched `RAW_PROMPTS` or the Beautifier.
+
+## Browser testing (Claude Preview)
+
+`.claude/launch.json` + `.claude/previewserve.js` serve the repo on `127.0.0.1:8742` for the Claude Preview MCP. Drive the page with `preview_eval` to assert real DOM/JS state (this is how the platform picker, master-prompt build, and Diagnostics were verified). Two gotchas learned the hard way:
+
+- **`loadTestData()` and `resetAll()` call `confirm()`** — a blocking modal freezes the renderer and makes every subsequent `preview_eval` time out. In tests, override first: `window.confirm = () => true; window.alert = () => {};`. If evals start timing out, a stuck modal is the cause, not your code — restart the preview server.
+- `preview_screenshot` captures from the top regardless of scroll — verify below-the-fold elements with `preview_eval` (`offsetHeight`, computed state), not screenshots.
+
+## Known gaps / roadmap (from the multi-agent QC audit, 2026-06)
+
+Overall ~72/100. The highest-leverage missing piece (flagged independently by 3 reviewers): **no learning loop** — benchmarks are web-guessed instead of pulled from the agency's own connected Meta/Google/Adzviser accounts, and no record of which shipped creative actually drove leads feeds back into scoring. The `creative-ad-auditor` 90/100 gate is also self-referential (denied the competitor decode it should score against). Treat these as the next big bets, not bugs.
 
 ## Skills available (auto-trigger on natural language)
 
@@ -96,6 +133,7 @@ The SMM Virality Decoder is a **separate project** in a different repo at `C:\Us
 ## Auto session log
 <!-- Maintained automatically by the global Stop hook. Newest first, last 10 kept. Do not edit between these tags. -->
 
+- 2026-06-30 16:47 - session activity
 - 2026-06-30 16:35 - session activity
 - 2026-06-30 15:56 - session activity
 - 2026-06-30 15:15 - Few things: - Whatever we have right now, let's keep this, because if needed, we can use your chat as well, an [...]
@@ -105,7 +143,6 @@ The SMM Virality Decoder is a **separate project** in a different repo at `C:\Us
 - 2026-06-23 23:46 - session activity
 - 2026-06-23 23:44 - now try I made that repo public. Now I think it should be fine.
 - 2026-06-23 23:42 - is it done?
-- 2026-06-23 23:40 - One-time setup (takes ~2 minutes): Log in to Vercel. In Claude Code, tell it: Run npx vercel login and wait fo [...]
 <!-- AUTO-LOG:END -->
 
 <!-- COMPACT-LOG:START -->
