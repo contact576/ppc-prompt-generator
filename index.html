@@ -5195,68 +5195,138 @@ For each static ad in Section 5.1 (every \`Ad [N][Letter]-S[#]\`), output:
 
 ## How to derive a Video Storyboard prompt
 
-For each video ad, follow this procedure:
+For each video ad, follow this procedure. The goal is a storyboard so detailed that a designer or video editor cannot misinterpret it — every spoken word, every on-screen overlay word, the visual direction, AND the audio direction are all specified per beat.
 
-**1. Read the script** — Hook + Message + Offer + CTA from your Pass 1 above. Note format/length if implied (e.g., "30s UGC vertical").
+**1. Read the script** — Hook + Message + Offer + CTA from your Pass 1 above. Note total length (e.g., "20s UGC vertical for Reels"). Identify the **final video aspect ratio** — usually 9:16 (Reels/TikTok/Shorts), sometimes 1:1 (Feed) or 4:5 (Feed portrait). State this once at the top of the template; it applies to every panel.
 
-**2. Decide panel count:**
-- 4 panels: short script with only Hook → Message → Offer → CTA
-- 5 panels: script with a proof or demo beat between Message and Offer
-- 6 panels (max): long script with multiple message beats
+**2. Decide panel count (8–10 panels — DEFAULT IS 9):**
+- 8 panels: scripts ≤15 seconds, tight pacing, no proof beat
+- 9 panels (DEFAULT): 15–25s script with a hook setup → problem → solution → proof → offer → CTA arc
+- 10 panels: 25–35s script with extended proof/testimonial or multi-beat offer setup
 
-**3. Map script lines to panels:**
-- Panel 1 = Hook
-- Panel 2 = Message (or first message beat)
-- Optional Panel 3 = Proof / Demo / Testimonial moment
-- Panel N-1 = Offer
-- Panel N = CTA
+Never use fewer than 8 — the whole point of this upgrade is that each beat gets its own panel so the designer can plan cuts precisely. If your script genuinely needs more than 10 beats, you wrote too long — trim the script.
 
-**4. Derive the visual scene per panel** — match the script intent to a believable scene given the service category. Examples:
-- HVAC: shivering homeowner, technician at door, technician working on furnace, customer's relieved expression, phone showing "$X OFF" offer, hand calling/booking
-- Pelvic floor PT: woman looking concerned, woman in clinic doing exercise, before/after diagram (tasteful), pricing offer screen, "Book Now" button
-- Dental implant: closeup of confident smile, dentist consultation, x-ray (tasteful), pricing offer, phone booking screen
-- Plumbing: leaking pipe, plumber at door with smile, technician fixing under sink, satisfied homeowner, pricing offer, phone CTA
+**3. Word-by-word allocation (THE NON-NEGOTIABLE RULE):**
+Every word of the script — voiceover/dialogue AND on-screen overlay text — must appear verbatim on exactly one panel. No word gets dropped, paraphrased, or split across panels. Before writing the template, do this allocation pass mentally:
+- Split the spoken script into N chunks corresponding to N panels (split at natural sentence/clause boundaries)
+- Split the on-screen overlay text into N chunks the same way (overlays may overlap a voiceover beat or be silent — that's fine)
+- Confirm: paste all panel "Voiceover" lines back-to-back → you should get the original spoken script verbatim. Same for overlay text.
 
-**5. Derive visual style** from Step 1's CHAIN CONTEXT brand voice:
+**4. Panel-by-panel arc (use this 9-panel default; adjust for 8 or 10):**
+- Panel 1 = **Hook frame 1** — the visual that stops the scroll (subject + unexpected element)
+- Panel 2 = **Hook payoff / setup** — the second beat that makes the viewer commit to watching
+- Panel 3 = **Problem or tension** — what's wrong / what's missing / what's frustrating
+- Panel 4 = **Problem amplified or pivot to solution** — the moment the value prop starts
+- Panel 5 = **Solution introduction** — the service in action, named, visible
+- Panel 6 = **Proof / demo / testimonial** — credibility moment (real shot, transformation, customer)
+- Panel 7 = **Offer reveal** — the price / promo / guarantee surfaces
+- Panel 8 = **Offer detail or urgency** — what's included, deadline, scarcity, de-risk line
+- Panel 9 = **CTA** — exact action, phone/site shown, logo
+
+For 8 panels, merge Panels 3+4 into one "Problem → Solution" beat. For 10 panels, split Panel 6 (Proof) into two beats: testimonial + transformation.
+
+**5. Derive the visual scene per panel** — match the script intent to a believable scene given the service category. Examples:
+- HVAC: shivering homeowner → thermostat showing low temp → technician at door → tech replacing furnace → digital airflow visual → relieved family → offer screen with $X OFF → fine-print deadline → hand calling
+- Pelvic floor PT: woman looking concerned → "you're not alone" stat → clinic exterior → therapist explaining → client doing exercise → before/after diagram → testimonial quote frame → "first session 50% off" → "Book Now" button
+- Dental implant: confident smile closeup → social moment → "do you avoid smiling?" → consultation booth → x-ray + plan → testimonial → "$X per implant" → "0% financing" → phone booking
+- Plumbing: leaking pipe → water damage → plumber at door with smile → tech fixing under sink → before/after of repair → happy homeowner → "$XX off any repair" → "same-day service guaranteed" → phone CTA
+
+**6. Derive audio direction per panel (NEW)** — every panel gets one audio cue line covering:
+- **Music style + intensity** for the beat (e.g., "tense low strings building", "warm acoustic guitar swell", "upbeat pop drop", "silence — let the visual breathe")
+- **Sound effects** when relevant (whoosh, ding, phone vibrate, doorbell, footsteps, applause, etc.)
+- **Voice tone** for any voiceover (e.g., "warm/conversational", "urgent/direct", "vulnerable/relatable", "authoritative/expert")
+
+Audio direction lets the editor pick the right music bed and SFX layer without guessing. If the script is voiceover-driven, voice tone matters most. If it's UGC talking-head, music intensity matters most.
+
+**7. Derive visual style** from Step 1's CHAIN CONTEXT brand voice:
 - "Warm / family-owned / traditional" → soft natural lighting, real-people-feeling, no slick CGI
 - "Modern / tech-forward / minimal" → clean lines, blue/teal palette, minimal text, abundant whitespace
 - "Bold / urgent / direct" → high contrast, large bold text, sharp angles
 - "Premium / luxury / trust-driven" → refined typography, muted neutrals, editorial photography feel
 
-**6. Use this storyboard prompt template:**
+**8. Use this storyboard prompt template:**
 
 \`\`\`
-Create a [4 / 5 / 6]-panel storyboard image for a [N]-second [video format you chose in Pass 1 — e.g. "UGC vertical", "motion graphics 16:9", "testimonial talking head"] video ad. Layout: [4 panels = 2×2 grid / 5 panels = 1 row of 5 / 6 panels = 3×2 grid]. Each panel has a thin border with the panel number in the top-left corner. Style: comic-book-style storyboard, like a director's pre-production sketch — realistic but stylized, not finished animation.
+Create a [8 / 9 / 10]-panel storyboard image for a [N]-second [video format you chose in Pass 1 — e.g. "UGC vertical", "motion graphics 16:9", "testimonial talking head"] video ad. Final video aspect ratio: [9:16 / 1:1 / 4:5]. Storyboard sheet layout: [8 panels = 4 rows × 2 cols / 9 panels = 3 rows × 3 cols / 10 panels = 5 rows × 2 cols]. Each panel has a thin border with the panel number in the top-left corner and a small duration label (e.g., "0-2s") in the top-right corner. Style: comic-book-style storyboard, like a director's pre-production sketch — realistic but stylized, not finished animation. Inside each panel, the visual takes the top ~70% of the panel area and the overlay/voiceover text appears in a clean bottom strip.
 
 Brand visual style: [pull 1-2 descriptors from Step 1 brand voice — e.g., "warm and family-owned, soft natural lighting, real-people-feeling"]. Color palette: [brand colors from Step 1 if specified, otherwise warm neutrals with one accent color].
 
-Aspect ratio: 16:9 horizontal.
+Storyboard sheet aspect: 16:9 horizontal (this is the sheet layout, NOT the final video).
+Final video aspect ratio (named at top of sheet): [9:16 vertical / 1:1 square / 4:5 portrait].
 
-PANEL 1 — HOOK (0-3 seconds):
-- Scene: [derived visual — describe the subject, action, setting, lighting, angle]
-- Caption overlay at the bottom of the panel: "[the EXACT hook line from script, in quotes]"
+PANEL 1 — HOOK FRAME 1 ([0]-[X1]s):
+- Scene: [derived visual — subject, action, setting, lighting, angle]
+- Voiceover: "[exact spoken words for this beat, or '(no voiceover this beat)']"
+- On-screen overlay text: "[exact overlay words shown during this beat, or '(no overlay this beat)']"
+- Audio cue: [music style + intensity + any SFX + voice tone if VO]
 - Mood: [attention-grabbing / urgent / curious / relatable]
 
-PANEL 2 — MESSAGE ([X]-[Y] seconds):
+PANEL 2 — HOOK PAYOFF / SETUP ([X1]-[X2]s):
 - Scene: [derived visual]
-- Caption overlay: "[the EXACT message line from script]"
+- Voiceover: "[exact spoken words]"
+- On-screen overlay text: "[exact overlay words]"
+- Audio cue: [...]
+- Mood: [...]
 
-[Add Panel 3 here if a proof/demo beat is needed]
+PANEL 3 — PROBLEM / TENSION ([X2]-[X3]s):
+- Scene: [...]
+- Voiceover: "[...]"
+- On-screen overlay text: "[...]"
+- Audio cue: [...]
+- Mood: [...]
 
-PANEL [N-1] — OFFER ([X]-[Y] seconds):
-- Scene: [derived offer scene — e.g., phone displaying offer, hand pointing at price, before/after comparison]
-- Caption overlay: "[the EXACT offer line from script]"
+PANEL 4 — PROBLEM AMPLIFIED / PIVOT TO SOLUTION ([X3]-[X4]s):
+- Scene: [...]
+- Voiceover: "[...]"
+- On-screen overlay text: "[...]"
+- Audio cue: [...]
+- Mood: [...]
 
-PANEL [N] — CALL TO ACTION (final 2-3 seconds):
-- Scene: [derived CTA scene — phone, website mockup, "Book Now" button, big phone number]
-- Caption overlay: "[the EXACT CTA from script]" — render this in larger, bolder text than the other panels
+PANEL 5 — SOLUTION INTRODUCTION ([X4]-[X5]s):
+- Scene: [the service in action, named, visible]
+- Voiceover: "[...]"
+- On-screen overlay text: "[...]"
+- Audio cue: [...]
+- Mood: [...]
 
-Caption overlays should appear at the bottom of each panel as if it's video subtitling. Use a clean sans-serif font. Slight imperfections in text rendering are acceptable; the goal is a storyboard that communicates the ad's narrative arc, not pixel-perfect typography.
+PANEL 6 — PROOF / DEMO / TESTIMONIAL ([X5]-[X6]s):
+- Scene: [credibility moment]
+- Voiceover: "[...]"
+- On-screen overlay text: "[...]"
+- Audio cue: [...]
+- Mood: [...]
+
+PANEL 7 — OFFER REVEAL ([X6]-[X7]s):
+- Scene: [price/promo/guarantee surfaces — phone screen, big number, on-screen card]
+- Voiceover: "[...]"
+- On-screen overlay text: "[exact offer words from script — usually the largest, boldest overlay]"
+- Audio cue: [...]
+- Mood: [...]
+
+PANEL 8 — OFFER DETAIL / URGENCY / DE-RISK ([X7]-[X8]s):
+- Scene: [fine-print, deadline, de-risk line, scarcity cue]
+- Voiceover: "[...]"
+- On-screen overlay text: "[de-risk line, deadline, etc.]"
+- Audio cue: [...]
+- Mood: [...]
+
+PANEL 9 — CALL TO ACTION (final 2-3s):
+- Scene: [phone, website mockup, "Book Now" button, big phone number, logo]
+- Voiceover: "[exact CTA spoken words]"
+- On-screen overlay text: "[exact CTA from script — render this in larger, bolder text than the other panels]"
+- Audio cue: [music landing beat, optional final SFX, voice tone "call to action"]
+- Mood: decisive / clear
+
+[Adjust panel count: drop Panel 4 or merge 3+4 for an 8-panel version; add a Panel 10 as "logo + sign-off + URL/handle" for a 10-panel version.]
+
+Caption overlays + voiceover bottom strips should appear at the bottom of each panel as if it's video subtitling + a side note for VO. Use a clean sans-serif font. Slight imperfections in text rendering are acceptable; the goal is a storyboard that communicates the ad's narrative arc + exact audio direction, not pixel-perfect typography.
+
+WORD COVERAGE CHECK (silent self-validation before emitting): Reading panels 1→N in order, the concatenated Voiceover lines must equal the original spoken script verbatim, and the concatenated On-screen overlay text must equal the original on-screen text verbatim. No word dropped, no word paraphrased.
 
 [Optional last line: any specific brand element to include — e.g., "Include the [client name] logo in the bottom-right of Panel [N]"]
 \`\`\`
 
-When writing the prompt, fill in EVERY bracketed placeholder with the actual derived content for that specific ad. Do NOT leave any \`[...]\` placeholders in the final prompt the strategist will copy.
+When writing the prompt, fill in EVERY bracketed placeholder with the actual derived content for that specific ad. Do NOT leave any \`[...]\` placeholders in the final prompt the strategist will copy. Run the WORD COVERAGE CHECK silently before delivering — if any word from the script is missing from the storyboard panels, redo the allocation.
 
 ---
 
