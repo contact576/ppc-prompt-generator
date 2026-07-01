@@ -80,9 +80,12 @@ This is the "what could be better" list. Nothing here is started; each needs a g
   specified) + an **EMBEDDED CREATIVE AUDIT RUBRIC** (the auditor's weighted criteria, hard caps,
   Competitive Gate, revision loop, Visual-Fidelity pass — built on the Step 8 Script Derivation
   Rules) + operating **rule 0** ("no pre-installed skills; inline spec is authoritative"). The
-  prompt now needs only the MCP connectors, so any device produces the same quality. *Open item:*
-  the embedded rubric was authored from the codebase's creative rules, not from the owner's actual
-  `creative-ad-auditor` SKILL.md (unavailable) — reconcile verbatim if/when that file is shared.
+  prompt now needs only the MCP connectors, so any device produces the same quality. The embedded
+  rubric was then **reconciled to the owner's real `creative-ad-auditor` SKILL.md (2026-07)**:
+  the authoritative 11-criterion scorecard (total 100), the mandatory cold-audience clarity gate,
+  the minimum-launch standards, and the static/video/copy framework anchors are inlined verbatim,
+  with the Competitive Gate (fed by Step 2 decode + Step 4 cheat codes) layered on as a hard gate
+  since the scorecard is already full — that gate is the piece the standalone skill was missing.
 - **Rubric-blind "cold-scroll" check** — a fresh agent sees the concept for ~1 second and
   reports the takeaway, with no knowledge of the rubric. Tests real stopping power. *(medium)*
 - **Visual-hook decoding** (owner explicitly wanted this) — Step 7A only transcribes audio;
