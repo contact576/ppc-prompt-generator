@@ -68,9 +68,11 @@ This is the "what could be better" list. Nothing here is started; each needs a g
   prediction vs reality, write results back to the Performance Vault. *(medium)*
 
 ### Tier 2 — Make the creative gate predict scroll-stopping (not just compliance)
-- **Feed the creative-ad-auditor the competitive context it's currently denied** (Step 2
-  decoded hooks + Step 4 cheat codes) and add a scored "does this beat the best competitor
-  ad?" criterion. *(prompt change, medium)*
+- ✅ **SHIPPED (2026-07)** — **Fed the creative-ad-auditor the competitive context it was
+  denied** (Step 2 decoded hooks + Step 4 cheat codes) and added a scored **Competitive gate**
+  ("Differentiated?" + "Beats the best competitor ad?") that caps craft-polished clones below
+  90. Lives in `buildMasterPrompt`: Section 7 (protocol loop, now 6 steps), Section 5 (auditor
+  roster I/O), Section 6 (authoritative rule), Section 8 (Pass 1 "Beats best rival" verdict).
 - **Rubric-blind "cold-scroll" check** — a fresh agent sees the concept for ~1 second and
   reports the takeaway, with no knowledge of the rubric. Tests real stopping power. *(medium)*
 - **Visual-hook decoding** (owner explicitly wanted this) — Step 7A only transcribes audio;

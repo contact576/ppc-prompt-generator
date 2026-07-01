@@ -106,7 +106,7 @@ The `qc-ppc-generator` skill encodes the full 5-pass audit (structural + placeho
 
 ## Known gaps / roadmap (from the multi-agent QC audit, 2026-06)
 
-Overall ~72/100. The highest-leverage missing piece (flagged independently by 3 reviewers): **no learning loop** — benchmarks are web-guessed instead of pulled from the agency's own connected Meta/Google/Adzviser accounts, and no record of which shipped creative actually drove leads feeds back into scoring. The `creative-ad-auditor` 90/100 gate is also self-referential (denied the competitor decode it should score against). Treat these as the next big bets, not bugs.
+Overall ~72/100. The highest-leverage missing piece (flagged independently by 3 reviewers): **no learning loop** — benchmarks are web-guessed instead of pulled from the agency's own connected Meta/Google/Adzviser accounts, and no record of which shipped creative actually drove leads feeds back into scoring. (The `creative-ad-auditor` 90/100 gate was *also* self-referential — denied the competitor decode it should score against — but that was **fixed 2026-07**: `buildMasterPrompt` now feeds the auditor the Step 2 competitor set + Step 4 cheat codes and layers a scored Competitive gate on the craft score.) Treat the learning loop as the next big bet, not a bug.
 
 ## Skills available (auto-trigger on natural language)
 
