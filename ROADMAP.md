@@ -68,9 +68,24 @@ This is the "what could be better" list. Nothing here is started; each needs a g
   prediction vs reality, write results back to the Performance Vault. *(medium)*
 
 ### Tier 2 — Make the creative gate predict scroll-stopping (not just compliance)
-- **Feed the creative-ad-auditor the competitive context it's currently denied** (Step 2
-  decoded hooks + Step 4 cheat codes) and add a scored "does this beat the best competitor
-  ad?" criterion. *(prompt change, medium)*
+- ✅ **SHIPPED (2026-07)** — **Fed the creative-ad-auditor the competitive context it was
+  denied** (Step 2 decoded hooks + Step 4 cheat codes) and added a scored **Competitive gate**
+  ("Differentiated?" + "Beats the best competitor ad?") that caps craft-polished clones below
+  90. Lives in `buildMasterPrompt`: Section 7 (protocol loop, now 6 steps), Section 5 (auditor
+  roster I/O), Section 6 (authoritative rule), Section 8 (Pass 1 "Beats best rival" verdict).
+- ✅ **SHIPPED (2026-07)** — **Made the master prompt device-independent (portability fix).**
+  The `creative-ad-auditor` skill lived only on the owner's device, so employees pasting the
+  master prompt into their own Claude Code sessions got degraded/divergent output. Fix: inlined
+  everything the run depends on — a new **SUB-AGENT SPECIFICATIONS** section (all 6 agents fully
+  specified) + an **EMBEDDED CREATIVE AUDIT RUBRIC** (the auditor's weighted criteria, hard caps,
+  Competitive Gate, revision loop, Visual-Fidelity pass — built on the Step 8 Script Derivation
+  Rules) + operating **rule 0** ("no pre-installed skills; inline spec is authoritative"). The
+  prompt now needs only the MCP connectors, so any device produces the same quality. The embedded
+  rubric was then **reconciled to the owner's real `creative-ad-auditor` SKILL.md (2026-07)**:
+  the authoritative 11-criterion scorecard (total 100), the mandatory cold-audience clarity gate,
+  the minimum-launch standards, and the static/video/copy framework anchors are inlined verbatim,
+  with the Competitive Gate (fed by Step 2 decode + Step 4 cheat codes) layered on as a hard gate
+  since the scorecard is already full — that gate is the piece the standalone skill was missing.
 - **Rubric-blind "cold-scroll" check** — a fresh agent sees the concept for ~1 second and
   reports the takeaway, with no knowledge of the rubric. Tests real stopping power. *(medium)*
 - **Visual-hook decoding** (owner explicitly wanted this) — Step 7A only transcribes audio;
