@@ -6,3 +6,7 @@
 
 # Local test artifacts
 *.pdf
+
+# Node deps — this is a no-build single-file app; node_modules only ever appears
+# transiently (e.g. playwright-core installed for headless Diagnostics runs).
+node_modules/
