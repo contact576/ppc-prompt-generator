@@ -9515,7 +9515,8 @@ function reconcilePlaceholders() {
 // In Sequential (Claude Chat) mode the operator copies N separate per-step prompts.
 // In Orchestrated (Claude Code) mode the operator copies ONE master prompt that wraps
 // the selected step bodies with: mission header, operating rules, sub-agent roster,
-// creative-ad-auditor loop, Pass 1 approval gate, Phase B image-upload protocol, and
+// full sub-agent specs + embedded creative audit rubric (self-contained — no installed
+// skills needed), Pass 1 approval gate, Phase B image-upload protocol, and
 // Pass 2 client-doc generation. This function assembles the master prompt; it never
 // runs in Claude Chat mode and never affects per-step buildPrompt(p1..p11) behavior.
 function buildMasterPrompt(f) {
@@ -9578,6 +9579,9 @@ function buildMasterPrompt(f) {
     '# OPERATING RULES — READ AND INTERNALIZE',
     '═══════════════════════════════════════',
     '',
+    '## 0. SELF-CONTAINED — NO PRE-INSTALLED SKILLS REQUIRED',
+    'This prompt is fully self-contained. Every sub-agent, scoring rubric, classification, and gate it relies on is DEFINED INLINE below — you do NOT need any skill, plugin, or file pre-installed on this machine. Where a skill name appears (for example "creative-ad-auditor"), treat it as a LABEL for the inline specification, not a dependency: if such a skill happens to be installed you MAY use it, but the inline spec in this prompt is ALWAYS authoritative and overrides it, so the output is identical on every operator device. The only external dependencies are the MCP connectors named in the mission header (Apify, Adzviser, Meta Ads, Google Ads, Google Drive). If one of those connectors is missing, STOP and say which — do not improvise around it.',
+    '',
     '## 1. APIFY BUDGET CAP (hard ceiling)',
     'Total Apify spend across this run must not exceed **$' + budgetCap + '**. Per-URL scrape cap: **' + maxAds + ' ads**. If you would exceed either, STOP and emit a failure brief naming the step + projected cost.',
     '',
@@ -9594,7 +9598,7 @@ function buildMasterPrompt(f) {
     'When invoking sub-agents (see Sub-Agent Orchestration Plan), give each sub-agent ONLY the slice of context it needs — never dump the entire chain. Sub-agents have bounded contexts by design.',
     '',
     '## 6. CREATIVE-AD-AUDITOR SKILL IS AUTHORITATIVE',
-    'For any creative script (P8 video or static), invoke the `creative-ad-auditor` skill via sub-agent to score 0–100. The score is NOT craft-in-a-vacuum: the auditor is handed the Step 2 competitive set, and a script that does not beat it (a near-clone, or one that loses to the strongest rival ad) cannot pass. Scripts must reach **≥90/100 AND clear the competitive gate** to ship to the strategist. See Creative Production Protocol below for the competitive gate + revision loop.',
+    'For any creative script (P8 video or static), spawn a **creative-auditor sub-agent** that applies the EMBEDDED CREATIVE AUDIT RUBRIC defined below to score 0–100 (no installed skill required — the inline rubric is authoritative). The score is NOT craft-in-a-vacuum: the auditor is handed the Step 2 competitive set, and a script that does not beat it (a near-clone, or one that loses to the strongest rival ad) cannot pass. Scripts must reach **≥90/100 AND clear the competitive gate** to ship to the strategist. See the Sub-Agent Specifications + Embedded Creative Audit Rubric + Creative Production Protocol below.',
     '',
     '## 7. MCP AUTHORIZATION (the one legitimate mid-run pause besides Pass 1)',
     'If a rental Apify actor needs first-time permission approval, emit the exact approval link, set state "AWAITING AUTHORIZATION", and pause. Resume from the same step using the vault when the operator replies AUTHORIZED.',
@@ -9649,13 +9653,79 @@ function buildMasterPrompt(f) {
     '| **competitor-filter** | After Phase A scrape in P2 | Raw scrape (~250 ads × N URLs) | EXACT/ADJACENT/IRRELEVANT classification per advertiser, with kill-reasons | ~3k/1k |',
     '| **research-qc** | After each of P2, P3, P4, P5 | The step\'s output | "Pass" OR list of weak/unsupported claims needing re-research | ~5k/0.5k |',
     '| **audit-qc** | After P6/P7 if they ran | Audit output | "Pass" OR missing-data flags | ~5k/0.5k |',
-    '| **creative-auditor** | Per script draft (calls `creative-ad-auditor` skill) | One script + brand voice + ICP + the Step 2 competitive slice (top rival ad + decoded hooks) + Step 4 cheat codes | Score 0–100 + per-criterion breakdown + competitive verdict (differentiated? / beats best?) + revision hints | skill-internal (~2-4k each) |',
+    '| **creative-auditor** | Per script draft + per rendered image (applies the Embedded Creative Audit Rubric below) | One script + brand voice + ICP + the Step 2 competitive slice (top rival ad + decoded hooks) + Step 4 cheat codes | Score 0–100 + per-criterion breakdown + competitive verdict (differentiated? / beats best?) + revision hints | ~2-4k each |',
     '| **storyboard-validator** | Per storyboard prompt | Storyboard + original script | Pass/fail on: 8–10 slides, word-by-word coverage, visual + audio direction per slide | ~3k/0.5k |',
     '| **document-completeness-qc** | After Pass 2 draft | Full Pass 2 markdown + section spec | Missing-section flags, unsupported numbers, Beautifier marker errors | ~10k/1k |',
     '',
     'When a sub-agent reports a failure, the main orchestrator either: (a) self-revises and re-invokes (up to 3 attempts where the plan specifies), or (b) STOPS and emits a failure brief if no revision path exists.',
     ''
   ].join('\n') : '═══════════════════════════════════════\n# SUB-AGENT QC: DISABLED BY OPERATOR\n═══════════════════════════════════════\n\nThe operator disabled sub-agent QC for this run. Main orchestrator handles QC inline using protocol checks only (Trace-or-Stop, Vault discipline, Error-stop). Quality may be lower than a QC-enabled run; flag any low-confidence outputs in the final brief.\n';
+
+  // --- Section 5b: Full sub-agent specifications (self-contained; no installed skills) ---
+  const secAgentSpecs = qcAgentsOn ? [
+    '',
+    '═══════════════════════════════════════',
+    '# SUB-AGENT SPECIFICATIONS (SELF-CONTAINED)',
+    '═══════════════════════════════════════',
+    '',
+    'The roster above is the index; these are the FULL operating specs. Each sub-agent is defined entirely here — no external skill or file is required. Run each exactly as written so any operator device produces the same result. Give each sub-agent ONLY the inputs listed (token economy).',
+    '',
+    '## competitor-filter',
+    '- **Role:** classify every advertiser from the Step 2 Phase A wide scrape so only true competitors feed the deep scrape and every downstream step.',
+    '- **Trigger:** after the Phase A wide scrape in Step 2, BEFORE the deep scrape.',
+    '- **Inputs:** the raw wide scrape (advertisers + one sample ad + landing page/CTA per advertiser); the client service, buyer type, and geography from Step 1.',
+    '- **Method — the same-buyer test (classify each advertiser):**',
+    '   - ✅ **EXACT** — same service AND same buyer type → keep for deep analysis.',
+    '   - 🟡 **ADJACENT** — overlapping service OR same buyer with a different service → keep as pattern-only context (Tier 2/3).',
+    '   - ❌ **IRRELEVANT** — everything else → name it and drop it. Kill on sight: course/info-product sellers, agencies selling to other agencies, coaches/consultants when the client sells a done-for-you service, dropshippers, and any advertiser whose real buyer is not the client buyer. Give each kill a one-word reason.',
+    '   - Then force-add the Step 1 known competitors straight to the EXACT list (they skip the funnel) if they advertise at all.',
+    '- **Output:** a table advertiser → EXACT/ADJACENT/IRRELEVANT + kill-reason; the EXACT list to deep-scrape; and the funnel counts ([N] wide → [N] unique advertisers → [N] survived kill-filters → [N] EXACT).',
+    '- **Fail rule:** if fewer than 3 EXACT survive, state "Insufficient comparable competitors" — do NOT pad the list with irrelevant advertisers.',
+    '- **Budget:** ~3k in / ~1k out.',
+    '',
+    '## research-qc',
+    '- **Role:** catch weak or unsupported claims in a research step BEFORE it is saved to the vault and used downstream.',
+    '- **Trigger:** after each of Step 2, 3, 4, 5.',
+    '- **Inputs:** that single step output only.',
+    '- **Method:** flag every number, benchmark, competitor claim, or expert assertion that lacks a cited source URL or a trace to a prior chain step; flag generic filler that could apply to any client; flag any competitor named without evidence.',
+    '- **Output:** "Pass", OR a list of weak claims, each with a concrete fix (re-query source X, or downgrade to qualitative language).',
+    '- **Resolution:** the orchestrator patches flagged claims with ONE targeted MCP re-query within the budget cap, re-saves the vault, then continues.',
+    '- **Budget:** ~5k in / ~0.5k out.',
+    '',
+    '## audit-qc',
+    '- **Role:** verify an account audit (Step 6/7) is not asserting numbers it never pulled.',
+    '- **Trigger:** after Step 6/7 if they ran.',
+    '- **Inputs:** the audit output only.',
+    '- **Method:** confirm every dollar figure and percentage traces to an actual Meta/Google/Adzviser MCP pull; flag any area where the underlying data was missing.',
+    '- **Output:** "Pass", OR missing-data flags (mark them in the output and continue — audit data is best-effort).',
+    '- **Budget:** ~5k in / ~0.5k out.',
+    '',
+    '## creative-auditor',
+    '- **Role:** score every creative script (and later every rendered image) against the EMBEDDED CREATIVE AUDIT RUBRIC below. This is the sub-agent that replaces any external creative-ad-auditor skill.',
+    '- **Trigger:** once per script draft in the Creative Production Protocol; once more per rendered image in Phase B (Visual-Fidelity pass).',
+    '- **Inputs:** the script; brand voice + ICP (Step 1); the Step 2 competitive slice (single top rival ad + 3–5 decoded winning hooks for this angle); the Step 4 cheat codes.',
+    '- **Method:** apply the Embedded Creative Audit Rubric — the weighted criteria, the hard caps, and the Competitive Gate — exactly as written below.',
+    '- **Output:** the rubric scorecard (score 0–100 + per-criterion breakdown + hard caps applied + competitive verdict + revision hints).',
+    '- **Pass/fail:** ≥90 AND competitive gate passed → approve; otherwise revise (max 3 attempts).',
+    '- **Budget:** ~2-4k each.',
+    '',
+    '## storyboard-validator',
+    '- **Role:** ensure each video storyboard is complete and shootable before it reaches the strategist.',
+    '- **Trigger:** per storyboard prompt.',
+    '- **Inputs:** the storyboard + the original approved script.',
+    '- **Method:** verify 8–10 panels; word-by-word voiceover coverage (every word of the approved script appears across the panels); each panel carries on-screen text + an audio cue (music/SFX/voice tone) + the aspect ratio; each panel visual matches its script beat.',
+    '- **Output:** "Pass", OR a fail list → regenerate the storyboard (max 2 retries) → if still failing, surface it with the failure note.',
+    '- **Budget:** ~3k in / ~0.5k out.',
+    '',
+    '## document-completeness-qc',
+    '- **Role:** last gate before the client sees the Pass 2 document.',
+    '- **Trigger:** after the Pass 2 draft, before it is emitted.',
+    '- **Inputs:** the full Pass 2 markdown + the Step 8 OUTPUT STRUCTURE section spec.',
+    '- **Method:** check every required section is present; every number traces to a chain source; every Beautifier marker is valid and balanced (for example ::: script-card opened and closed, a > [!STAT] block well-formed); every embedded creative image is captioned.',
+    '- **Output:** missing-section flags / unsupported numbers / broken-marker flags → the orchestrator fixes each before emitting.',
+    '- **Budget:** ~10k in / ~1k out.',
+    ''
+  ].join('\n') : '';
 
   // --- Section 6: Step execution chain (the actual work) ---
   // For each step in stepList: take its raw prompt, run buildReplacements on it,
@@ -9685,6 +9755,61 @@ function buildMasterPrompt(f) {
     stepBodies
   ].join('\n');
 
+  // --- Section 6b: Embedded creative audit rubric (self-contained; replaces the external skill) ---
+  const secRubric = hasScriptSteps ? [
+    '',
+    '═══════════════════════════════════════',
+    '# EMBEDDED CREATIVE AUDIT RUBRIC (AUTHORITATIVE)',
+    '═══════════════════════════════════════',
+    '',
+    'This rubric IS the creative-auditor. It is self-contained — no installed skill is needed, and if one exists this rubric overrides it. The creative-auditor sub-agent scores every script 0–100 with it, enforces the hard caps, and applies the Competitive Gate. It is built directly on the Step 8 Script Derivation Rules so it never contradicts them.',
+    '',
+    '## Weighted criteria (sum = 100)',
+    '1. **1-Second Rule / stopping power — 20.** The hook contains the plain-language service noun (for example "BASEMENT RENOVATION", "FURNACE INSTALL"); image-alone AND text-alone each communicate WHAT the ad is for; the first frame stops the target ICP mid-scroll.',
+    '2. **Service-noun in primary text — 10.** The service is surfaced within the first 6 words of the primary text.',
+    '3. **Single-concept discipline — 10.** Exactly one Hook, one Message, one Offer angle, one CTA. No Option A/B alternatives; the message carries one idea.',
+    '4. **Offer & CTA strength — 12.** A specific offer (not "contact us"), a low-friction CTA, and a concrete reason to act now.',
+    '5. **Proof & traceability — 13.** Every number in the script traces to Step 1, 2, 4, or 6; credibility elements (years, customers served, price) are used where the chain provides them; no untraceable stat is stated as fact.',
+    '6. **Archetype / story-arc integrity — 10.** Statics declare ONE archetype (Poster / Proof Shot / Review Screenshot / Before-After Split / Big Number / Comparison) AND its required ingredient actually exists in chain data. Videos map cleanly to an 8–10 panel storyboard with word-by-word coverage.',
+    '7. **Brand-voice & compliance fit — 10.** Matches the Step 1 brand voice and respects no-go topics; platform-compliant (no prohibited or unverifiable claims).',
+    '8. **Competitive differentiation — the COMPETITIVE GATE — 15.** (a) Logo-swap / differentiation: a competitor could NOT post this script unchanged. (b) Beats-the-best: it out-hooks the single strongest EXACT-competitor ad in the Step 2 decode for this angle.',
+    '',
+    '## Hard caps (override the weighted total)',
+    '- 1-Second Rule fails (no service noun in the hook, or image/text alone is ambiguous) → cap **75**.',
+    '- Any number presented as fact that cannot be traced to the chain → cap **70** until fixed.',
+    '- A static archetype whose required ingredient is absent from chain data (for example a Review Screenshot with no real review) → cap **78**.',
+    '- A compliance red flag (an unverifiable "#1", a health/financial guarantee, a prohibited claim) → cap **60** and must revise.',
+    '- **Competitive Gate fail** (a near-clone of an ad already running, OR the auditor cannot argue it beats the strongest rival ad) → cap **89** — cannot pass, no matter how polished the craft.',
+    '',
+    '## Scoring bands',
+    '- **90–100** → ship (only if ALL hard caps and the Competitive Gate are clear).',
+    '- **80–89** → revise (close): fix the lowest-scoring criteria plus any capped gate.',
+    '- **below 80** → rework from the hook.',
+    '',
+    '## Revision loop',
+    'Up to 3 attempts. Each attempt targets the lowest-scoring criteria plus any failed hard gate, then re-scores. After attempt 3 still below 90 or still gate-failed, surface the best attempt with the verdict "⚠ Scored XX/100. Missed: [criteria]" so the strategist sees exactly what fell short.',
+    '',
+    '## Scorecard the creative-auditor returns (per script)',
+    '```',
+    'SCORE: XX/100',
+    '  1-Second / stopping ...... xx/20   [one-line note]',
+    '  Service-noun primary ..... xx/10',
+    '  Single-concept ........... xx/10',
+    '  Offer & CTA .............. xx/12',
+    '  Proof & traceability ..... xx/13',
+    '  Archetype / story-arc .... xx/10',
+    '  Brand-voice & compliance . xx/10',
+    '  Competitive gate ......... xx/15',
+    'HARD CAPS: [none | which cap applied and why]',
+    'COMPETITIVE VERDICT: Differentiated? YES/NO · Beats best rival ([name])? YES/NO',
+    'REVISION HINTS: [lowest-scoring criteria + the concrete fix]',
+    '```',
+    '',
+    '## Visual-Fidelity pass (Phase B — run once per rendered image)',
+    'Same sub-agent, different checklist. For each operator-uploaded image, confirm: the hook / service-noun text renders correctly and is legible in about 1 second; the layout matches the storyboard or static intent; colors are on-brand with no off-brand elements; there are no AI artifacts (garbled text, warped logo, extra fingers); and the declared archetype ingredient is visually present (for example the real review actually shows). Return "PASS" or "FLAG: [issue]" — the operator decides whether to re-render or proceed.',
+    ''
+  ].join('\n') : '';
+
   // --- Section 7: Creative production protocol (only when scripts in scope) ---
   const sec7 = hasScriptSteps ? [
     '',
@@ -9695,7 +9820,7 @@ function buildMasterPrompt(f) {
     'When Step 8 reaches Pass 1 (creative scripts) — BEFORE showing anything to the strategist — every script must go through this loop:',
     '',
     '1. **Draft** the script using Step 1 brand voice + Step 2 competitor decoded patterns + Step 4 cheat codes + the 1-second rule + service-noun gate + archetype-required-ingredient rule.',
-    '2. **Audit** by invoking the `creative-ad-auditor` skill via sub-agent. Pass the skill a SCOPED brief (never the whole chain): (a) the script, (b) the client brand voice from Step 1, (c) the target ICP from Step 1, and — the context the auditor was previously denied — (d) the COMPETITIVE SET it must beat: the 3–5 decoded winning hooks for this service from Step 2 + the single highest-performing competitor ad for this exact angle, plus (e) the Step 4 cheat codes. The skill returns a score 0–100 + per-criterion breakdown.',
+    '2. **Audit** by spawning a creative-auditor sub-agent that applies the EMBEDDED CREATIVE AUDIT RUBRIC below (no installed skill needed). Pass it a SCOPED brief (never the whole chain): (a) the script, (b) the client brand voice from Step 1, (c) the target ICP from Step 1, and — the context the auditor was previously denied — (d) the COMPETITIVE SET it must beat: the 3–5 decoded winning hooks for this service from Step 2 + the single highest-performing competitor ad for this exact angle, plus (e) the Step 4 cheat codes. It returns a score 0–100 + per-criterion breakdown.',
     '3. **Competitive gate (layered on the craft score):** the auditor must also return a scored verdict against that Step 2 set — (i) **Differentiated?** is this concept distinct from the decoded competitor cluster, or a near-clone of an ad already running? and (ii) **Beats the best?** can it argue this concept out-hooks the single strongest competitor ad for this service? A near-clone, or a concept it cannot argue beats the incumbent, is CAPPED below 90 no matter how polished the craft — this is what stops the gate from grading creative in a vacuum.',
     '4. **Score gate:**',
     '   - **≥90/100 AND competitive gate passed** → script approved, add to Pass 1 batch with verdict "✓ Scored XX/100 · Beats best rival"',
@@ -9749,7 +9874,7 @@ function buildMasterPrompt(f) {
     'After the operator replies GO, switch to Phase B:',
     '',
     '1. Emit: "Scripts approved. Take the storyboard/static prompts to your image-gen tool (e.g. GPT Image gen 2.0). When you have the generated images, paste them here (one at a time or in one batch), then reply BUILD DOC to generate the client-facing document with creatives embedded."',
-    '2. As the operator pastes each image, invoke the `creative-ad-auditor` skill ONE more time per image — auditing the RENDERED visual against the original script intent (catches: text rendered wrong by AI, layout mismatch, off-brand colors). Flag any issues; the operator decides whether to re-render or proceed.',
+    '2. As the operator pastes each image, run the creative-auditor sub-agent ONE more time per image (Embedded Creative Audit Rubric — Visual-Fidelity pass) — auditing the RENDERED visual against the original script intent (catches: text rendered wrong by AI, layout mismatch, off-brand colors). Flag any issues; the operator decides whether to re-render or proceed.',
     '3. When the operator replies BUILD DOC, advance to Pass 2 (client document).',
     ''
   ].join('\n') : '';
@@ -9780,7 +9905,7 @@ function buildMasterPrompt(f) {
     ''
   ].join('\n');
 
-  return [sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
+  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, sec6, secRubric, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
 }
 
 function buildPrompt(pid) {
