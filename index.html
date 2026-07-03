@@ -2569,10 +2569,12 @@ Briefly plan:
 
 For each populated Top-3 service, run the following 8 searches. Substitute \`[SERVICE]\` with the actual service name.
 
-1. \`Meta Ads CPL benchmark [SERVICE] [GEOGRAPHY] 2025 2026\`
+**FIRST check the BUSINESS MODEL from Step 1's CHAIN CONTEXT.** Searches 3 and 4 below (weather-seasonality + government rebate) only make sense for a **local-consumer service** client. If Step 1 classified the client as **B2B / considered-purchase** or **e-commerce/DTC**, SKIP searches 3 and 4 (they return nothing usable — there are no government rebates or weather-seasons for buying an agency's or SaaS's service) and instead run: (3') \`[SERVICE] buyer sales cycle / decision triggers [CURRENT YEAR]\` and (4') \`[SERVICE] cost per lead / cost per booked call benchmark [GEOGRAPHY] 2025 2026\`. Note in the output that the consumer-specific modules were adapted, don't emit "no rebates found" filler.
+
+1. \`Meta Ads CPL benchmark [SERVICE] [GEOGRAPHY] 2025 2026\`  *(for B2B, target the correct object: cost per booked call / qualified lead — not a consumer CPL)*
 2. \`Meta Ads CPM CTR [SERVICE] [GEOGRAPHY] benchmark\`
-3. \`[SERVICE] seasonality [GEOGRAPHY] [CURRENT MONTH] [CURRENT YEAR]\`
-4. \`[SERVICE] government rebate [GEOGRAPHY] [CURRENT YEAR]\`
+3. \`[SERVICE] seasonality [GEOGRAPHY] [CURRENT MONTH] [CURRENT YEAR]\`  *(local-consumer only — see note above)*
+4. \`[SERVICE] government rebate [GEOGRAPHY] [CURRENT YEAR]\`  *(local-consumer only — see note above)*
 5. \`top Meta Ads experts [SERVICE] strategies 2025 2026\`
 6. \`[SERVICE] Meta Ads case study results\`
 7. \`Advantage+ audience [SERVICE] effectiveness\`
@@ -5658,7 +5660,7 @@ Determine the service scope BEFORE writing the brief:
 4. **Determine scope:**
    - If multi-service NOT invoked → scope = recommended service only (single-service mode)
    - If multi-service invoked AND Step 4 flagged a runner-up → scope = recommended + runner-up (multi-service mode, no compatibility check)
-   - If multi-service invoked AND no runner-up flagged in Step 4 → ask the strategist explicitly: "Step 4 did not flag a Strong Runner-Up. Do you want me to use [PRIORITY_2] regardless, or run single-service mode?"
+   - If multi-service invoked AND no runner-up flagged in Step 4 → **default autonomously to single-service mode** (Step 4's recommended service) so an unattended run never stalls; note in the brief: "Defaulted to single-service — Step 4 flagged no Strong Runner-Up; strategist can add [PRIORITY_2] on review." Only pause for the strategist here if the run is being executed interactively (not in an unattended orchestrator run).
 
 State the determined scope at the top of the brief.
 
@@ -5894,7 +5896,7 @@ The audience strategy below is pulled from Step 4 Section 4A's expert recommenda
 | **Include audience** | [Name of Lookalike or Custom Audience] | |
 | **Exclude audience** | [Name — e.g. "[CLIENT_NAME] Customers (Source)"] | Uploaded from [CRM] |
 | **Advantage+ audience toggle** | [ON / OFF — per Step 4 Section 4A recommendation] | Step 4 |
-| **Advantage+ placements** | [ON / OFF — per Step 4 recommendation, default OFF for audit-able performance data] | Step 4 |
+| **Advantage+ placements** | [ON by default (2026 best practice — maximizes delivery and lowers CPM; analyze per-placement via the Breakdown view and exclude only proven wasters). Turn OFF only when Step 4 gives a specific reason for this client.] | Step 4 |
 | **Placements (manual)** | FB Feed, IG Feed, FB Reels, IG Reels, IG Stories, FB Stories | [Adjust per Step 4 data] |
 | **Objective** | [from CONVERSION_DESTINATION mapping below] | |
 | **Conversion location** | [from CONVERSION_DESTINATION mapping below] | |
@@ -7725,6 +7727,12 @@ You will produce TWO outputs in this conversation, in this order:
 1. **CHAIN CONTEXT — Internal Research Notes.** Conversational prose displayed directly in the chat (no code fence). Contains all research findings the downstream chain will consume but the team-facing deliverable should NOT show: persona names, locked terminology, full competitor list, brand voice quotes, data integrity issues, gaps blocking downstream steps. Output this block FIRST.
 
 2. **DELIVERABLE — Team Primer.** Polished, copy-paste-ready markdown matching the OUTPUT STRUCTURE defined below. Output this entire block inside a single \`\`\`markdown ... \`\`\` fenced code block so the user can copy it cleanly into the Beautifier. Output this block SECOND.
+
+**BEFORE either output, lock the BUSINESS MODEL CLASSIFICATION at the very top of CHAIN CONTEXT — it governs the entire chain.** Several downstream modules are written for *local-consumer* businesses; they must ADAPT (not force-fit) for other models. Classify the client into ONE and state it explicitly:
+- **LOCAL-CONSUMER SERVICE** (HVAC, dental, med-spa, home services, clinics) — the default the chain is tuned for. Government-rebate research, insurance/financing "how customers pay", weather/seasonality timing, and named consumer personas all APPLY.
+- **B2B / CONSIDERED-PURCHASE** (agencies, SaaS, professional/B2B services, contractors selling to businesses) — usually NO government rebates, NO insurance/financing angle, weak weather-seasonality. For these clients every downstream step must: skip the rebate / insurance / weather-seasonality modules with a one-line "N/A — B2B offer" instead of padding; treat the economic target as **cost per qualified lead / cost per booked call** over a longer sales cycle (lead → SQL → close), NOT a consumer CPL; and build a **business-buyer persona** (role, company size, trigger event), not a named consumer archetype.
+- **E-COMMERCE / DTC** — ROAS / AOV / first-purchase economics; rebate + insurance modules are N/A; seasonality is the retail calendar (BFCM, holidays), not weather.
+Downstream steps READ this classification from CHAIN CONTEXT and adapt any local-consumer-specific section to the correct economic object rather than emitting empty "no rebates found" filler.
 
 ═══════════════════════════════════════
 END OF EXECUTION DIRECTIVE
@@ -9669,17 +9677,18 @@ function buildMasterPrompt(f) {
     '## 1. APIFY BUDGET CAP (hard ceiling)',
     'Total Apify spend across this run must not exceed **$' + budgetCap + '**. Per-URL scrape cap: **' + maxAds + ' ads**. If you would exceed either, STOP and emit a failure brief naming the step + projected cost.',
     '',
-    '## 2. VAULT DISCIPLINE',
-    'Every step saves its FULL output to Google Drive folder "PPC Guru Research Vault / ' + clientName + '" before continuing. After save, confirm in one line: "✅ Vault updated: <filename>". If Drive save fails, STOP — never continue without the save.',
+    '## 2. VAULT DISCIPLINE — SAVE **AND** RELOAD (the vault is the source of truth, not chat memory)',
+    'Every step saves its FULL output to Google Drive folder "PPC Guru Research Vault / ' + clientName + '" before continuing, using a DETERMINISTIC filename: `PPCGuru_Step-0N_<ShortName>.md` (zero-padded step number) — e.g. `PPCGuru_Step-02_MetaCompetitorIntel.md`, `PPCGuru_Step-08_StrategyRecap.md`. After save, confirm in one line: "✅ Vault updated: <filename>". If Drive save fails, STOP — never continue without the save.',
+    '**RELOAD RULE (critical — closes the mid-run compaction hole):** this is a long run and Claude Code may auto-compact the conversation partway through, replacing earlier steps\' verbatim detail with a lossy summary. Therefore, before a step uses any prior step\'s exact figures, competitor names, decoded hooks, or scripts, **RELOAD that prior step\'s vault file from Drive and quote from the file** — do NOT rely on conversation memory. If a value you need is not in the reloaded vault file, STOP (never fabricate it, never silently drop it). The vault is written so it can be re-read during the run, not just saved.',
     '',
     '## 3. TRACE-OR-STOP (numbers + claims)',
     'Every number, competitor name, benchmark, and dollar figure must trace to a prior chain source (a vault file or this prompt). If it cannot be traced, replace with qualitative language ("most customers" not "73%"). Never fabricate to fill a gap.',
     '',
-    '## 4. ERROR-STOP, DO NOT FABRICATE FORWARD',
-    'If any MCP call fails or any step cannot complete with real data, STOP and emit a failure brief naming the step + specific failure. Do not invent data to keep the chain moving.',
+    '## 4. ERROR-STOP, DO NOT FABRICATE FORWARD (hard-fail vs empty are different)',
+    'Distinguish two cases so a transient glitch does not halt a recoverable run and an empty result does not get fabricated over: (a) an MCP call **hard-fails** (auth error, 4xx/5xx, timeout) → RETRY once; if it still fails, STOP and emit a failure brief naming the step + the exact error. (b) an MCP call **succeeds but returns empty or partial data** (no ads for a search URL, a single video will not transcribe) → NOTE it in the output and continue with what exists. Never invent data to fill a gap; never halt the whole run over one empty result.',
     '',
-    '## 5. SUB-AGENT TOKEN ECONOMY',
-    'When invoking sub-agents (see Sub-Agent Orchestration Plan), give each sub-agent ONLY the slice of context it needs — never dump the entire chain. Sub-agents have bounded contexts by design.',
+    '## 5. SUB-AGENTS — REAL, NOT ROLE-PLAYED (and scoped)',
+    'When the plan says "invoke/spawn the X sub-agent," actually spawn a SEPARATE agent with only its scoped inputs — do NOT grade your own work inline in the main context (that turns every QC gate, especially the creative 90/100 gate, into the same context certifying itself). In your output, paste the sub-agent\'s RAW returned verdict/scorecard verbatim (e.g. the creative-auditor\'s full SCORE block) so the gate is auditable — **a gate with no pasted sub-agent output did not run.** Give each sub-agent ONLY the slice of context it needs; never dump the entire chain.',
     '',
     '## 6. CREATIVE-AD-AUDITOR SKILL IS AUTHORITATIVE',
     'For any creative script (P8 video or static), spawn a **creative-auditor sub-agent** that applies the EMBEDDED CREATIVE AUDIT RUBRIC defined below to score 0–100 (no installed skill required — the inline rubric is authoritative). The score is NOT craft-in-a-vacuum: the auditor is handed the Step 2 competitive set, and a script that does not beat it (a near-clone, or one that loses to the strongest rival ad) cannot pass. Scripts must reach **≥90/100 AND clear the competitive gate** to ship to the strategist. See the Sub-Agent Specifications + Embedded Creative Audit Rubric + Creative Production Protocol below.',
@@ -9825,9 +9834,43 @@ function buildMasterPrompt(f) {
     const isLast = idx === stepList.length - 1;
     const sep = isLast ?
       '\n\n═══════════════════════════════════════\n# ✅ STEP ' + stepNum + ' COMPLETE — END OF CHAIN\n═══════════════════════════════════════\n\nThis is the final step of this run. After completing it, run the final-consolidation logic below and produce the final deliverable per the chosen outcome.\n' :
-      '\n\n═══════════════════════════════════════\n# ═══ STEP ' + stepNum + ' → STEP ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' ═══\n═══════════════════════════════════════\n\n1. Save the Step ' + stepNum + ' full output to Drive (folder "PPC Guru Research Vault / ' + clientName + '", filename per the Step ' + stepNum + ' vault spec). Confirm: "✅ Vault updated: <filename>".\n2. Run a one-line self-check: did this step produce all sections it was asked to? If no — STOP and emit a failure brief. If yes — continue to Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + '.\n' + (qcAgentsOn && ['p2','p3','p4','p5'].includes(pid) ? '3. Invoke `research-qc` sub-agent on the Step ' + stepNum + ' output. If it returns "Pass" → continue. If it returns weak-claim flags → patch the weak claims using one targeted MCP re-query (within budget cap), re-save vault, then continue.\n' : '') + (qcAgentsOn && ['p6','p7'].includes(pid) ? '3. Invoke `audit-qc` sub-agent on the Step ' + stepNum + ' output. If "Pass" → continue. If missing-data flags → mark them in the output and continue (audit data is best-effort).\n' : '');
+      '\n\n═══════════════════════════════════════\n# ═══ STEP ' + stepNum + ' → STEP ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' ═══\n═══════════════════════════════════════\n\n1. Save the Step ' + stepNum + ' full output to Drive as `PPCGuru_Step-' + String(stepNum).padStart(2, '0') + '_<ShortName>.md` (folder "PPC Guru Research Vault / ' + clientName + '"). Confirm: "✅ Vault updated: <filename>".\n2. Run a one-line self-check: did this step produce all sections it was asked to? If no — STOP and emit a failure brief. If yes — continue to Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + '.\n3. RELOAD-ON-ENTRY: begin Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' by reloading from the vault the specific prior-step files it references (per Operating Rule 2) — do not trust conversation memory, which may have been auto-compacted.\n' + (qcAgentsOn && ['p2','p3','p4','p5'].includes(pid) ? '4. Invoke the `research-qc` sub-agent (a real, separate agent) on the Step ' + stepNum + ' output and paste its raw verdict. If "Pass" → continue. If weak-claim flags → patch them with one targeted MCP re-query (within budget cap), re-save vault, then continue.\n' : '') + (qcAgentsOn && ['p6','p7'].includes(pid) ? '4. Invoke the `audit-qc` sub-agent (a real, separate agent) on the Step ' + stepNum + ' output and paste its raw verdict. If "Pass" → continue. If missing-data flags → mark them in the output and continue (audit data is best-effort).\n' : '');
     return '═══════════════════════════════════════\n# STEP ' + stepNum + ' OF ' + stepList.length + ' — ' + stepName + '\n═══════════════════════════════════════\n\n' + body + sep;
   }).join('\n');
+
+  // --- Section 5c: MCP PRE-FLIGHT + RESUME (fail fast before a long unattended run) ---
+  // Derive exactly which connectors THIS run needs from the selected steps, so the
+  // pre-flight names them specifically rather than probing everything.
+  const needApify = stepList.includes('p2') || stepList.includes('p3');
+  const needMetaAds = stepList.includes('p2') || stepList.includes('p6');
+  const needAdzviser = stepList.includes('p6') || stepList.includes('p7');
+  const needGoogleAds = stepList.includes('p7');
+  const preflightChecks = [];
+  preflightChecks.push('- **Google Drive** (always — the Research Vault): confirm you can list/create the folder "PPC Guru Research Vault / ' + clientName + '". This is where every step is saved; if it fails, nothing downstream is recoverable.');
+  if (needApify) preflightChecks.push('- **Apify** (Steps ' + [stepList.includes('p2') ? '2' : '', stepList.includes('p3') ? '3' : ''].filter(Boolean).join(' + ') + ' — competitor scraping): confirm the connector responds (a cheap call such as listing your actors or a docs search). Do NOT run a paid scrape here — just confirm auth.');
+  if (needMetaAds) preflightChecks.push('- **Meta Ads** (Step ' + [stepList.includes('p2') ? '2 discovery' : '', stepList.includes('p6') ? '6 audit' : ''].filter(Boolean).join(' + ') + '): confirm the connector responds. For Step 6 you also need the client Meta ad-account id (act_…); if intake did not provide it, ADD it to the upfront interview and confirm it resolves to exactly one account before Step 6.');
+  if (needAdzviser) preflightChecks.push('- **Adzviser** (Steps ' + [stepList.includes('p6') ? '6' : '', stepList.includes('p7') ? '7' : ''].filter(Boolean).join(' + ') + ' — account audit): confirm the connector responds and that a workspace/account for this client exists. If the client has no connected account, mark Steps 6/7 "N/A — no account access (new client)" NOW rather than discovering it mid-run.');
+  if (needGoogleAds) preflightChecks.push('- **Google Ads** (Step 7 audit): confirm the connector responds and the client customer id is available; otherwise mark Step 7 "N/A — no account access".');
+  const secPreflight = [
+    '═══════════════════════════════════════',
+    '# STEP 0 — MCP PRE-FLIGHT + RESUME CHECK (run BEFORE Step 1)',
+    '═══════════════════════════════════════',
+    '',
+    'This is an unattended multi-step run. A connector that is missing or unauthorized must be caught NOW — not two hours in, after Apify spend and a half-built vault. Before executing Step 1, run this pre-flight:',
+    '',
+    '## A. Connector probe (fail fast)',
+    'Make ONE cheap, read-only call to each connector this run needs and confirm it responds:',
+    preflightChecks.join('\n'),
+    '',
+    'If ANY required connector is missing or unauthorized, STOP immediately and emit a short brief: which connector, what it blocks, and how to connect it. Do not start Step 1 with a known-missing connector (except Adzviser/Google Ads, which you may mark N/A and continue if this is a new client with no account).',
+    '',
+    '## B. Resume check (idempotency)',
+    'List the vault folder "PPC Guru Research Vault / ' + clientName + '" first. If step files already exist from an earlier interrupted run, this is a RESUME: read the existing step outputs, report "▶ Resuming — Steps X, Y already in vault", and continue from the first MISSING step instead of re-running (and re-paying for) completed work. Only re-run a completed step if its vault file is empty or obviously truncated.',
+    '',
+    '## C. Spend ledger (enforce the cap, do not trust honor system)',
+    'Open a running Apify spend tally at $0 and count EVERY Apify actor run against it — the Meta scrape, the Google scrape, AND each video transcription (the transcription actor bills too; do not leave it out). Before each run, estimate its cost (scrapes ≈ ads × ~$0.75/1000; transcription ≈ per-video actor rate) and add it; after each run, reconcile to the actual cost from the Apify run metadata. Print the running total after every run ("Apify spend: $X.XX / $' + budgetCap + '"). If the tally would cross $' + budgetCap + ', STOP per Operating Rule 1 — never let it silently exceed.',
+    ''
+  ].join('\n');
 
   const sec6 = [
     '═══════════════════════════════════════',
@@ -9835,6 +9878,8 @@ function buildMasterPrompt(f) {
     '═══════════════════════════════════════',
     '',
     'Execute each step in order. Between steps, run the vault-save + self-check protocol shown in the ═══ STEP N → N+1 ═══ separator. Do not skip ahead and do not parallelize the steps — they have data dependencies.',
+    '',
+    hasScriptSteps ? '**CREATIVE-PHASE WIRING (read before Step 8).** Step 8 authors the ad scripts. When Step 8 reaches its "Pass 1 — Script Preview", DO NOT show the raw scripts to the strategist yet. First jump forward to the **CREATIVE PRODUCTION PROTOCOL — 90/100 GATE** + **EMBEDDED CREATIVE AUDIT RUBRIC** (printed after this step chain for reference) and run every script through the audit + storyboard validation. THEN present the audited scripts at the single **PASS 1 APPROVAL GATE** — that gate IS Step 8\'s Pass 1 human checkpoint (there is only ONE script-approval pause, not two). The "END OF CHAIN" marker after the last step marks the end of the RESEARCH steps only; creative audit, Phase B image upload, and the final client document are phases of Step 8 / creative production executed at that point — not a separate stage tacked on after everything. Do not produce Step 8\'s Pass 2 recap document until after the Pass 1 approval.' : '',
     '',
     stepBodies
   ].join('\n');
@@ -9876,7 +9921,7 @@ function buildMasterPrompt(f) {
     '## STEP 3 — Competitive gate (the layer the standalone skill lacks — fed by the research)',
     'Because the 100-point scorecard is full, competition is enforced as a HARD GATE using the Step 2 decode + Step 4 cheat codes:',
     '- **Differentiated?** Logo-swap test — a competitor could NOT post this script unchanged, and it is not a near-clone of an ad already running in the Step 2 decode.',
-    '- **Beats the best?** It out-hooks the single strongest EXACT-competitor ad in the Step 2 decode for this angle.',
+    '- **Beats the best?** It out-hooks the single strongest EXACT-competitor ad in the Step 2 decode for this angle. **PROOF REQUIRED (anti-self-inflation):** to answer YES you MUST (a) quote the actual rival hook you are beating verbatim from the Step 2 decode, by competitor name, and (b) state the ONE concrete reason this concept out-hooks it (sharper specificity, stronger proof, better-qualified promise — not "it is more engaging"). If you cannot name and quote a specific rival ad, the answer is NO by default — never assert "beats best rival" against an unnamed or hypothetical competitor.',
     'Fail EITHER → the script is CAPPED at **89** (cannot ship), regardless of craft score.',
     '',
     '## Hard gates / minimum launch standards (tripping any one blocks the ship)',
@@ -9916,7 +9961,7 @@ function buildMasterPrompt(f) {
     '  Offer & value ............ xx/10      Policy & claim safety .... xx/5',
     '                                        Lead-quality control ..... xx/5',
     'HARD GATES: [none | which gate tripped and why]',
-    'COMPETITIVE VERDICT: Differentiated? YES/NO · Beats best rival ([name])? YES/NO',
+    'COMPETITIVE VERDICT: Differentiated? YES/NO · Beats best rival? YES/NO — rival beaten: [competitor name] · rival hook quoted: "[verbatim]" · why this wins: [one concrete reason]',
     'TOP 3 FIXES: 1) ...  2) ...  3) ...',
     'REVISED HOOK / CTA: [copy the strategist can hand to a designer/editor]',
     '```',
@@ -9932,6 +9977,8 @@ function buildMasterPrompt(f) {
     '═══════════════════════════════════════',
     '# CREATIVE PRODUCTION PROTOCOL — 90/100 GATE',
     '═══════════════════════════════════════',
+    '',
+    '**(Placement note: this section is printed here, after the step chain, for reference — but it EXECUTES during Step 8, at its Pass 1, per the Creative-Phase Wiring note in the step chain. Run it there, not at the end of the run.)**',
     '',
     'When Step 8 reaches Pass 1 (creative scripts) — BEFORE showing anything to the strategist — every script must go through this loop:',
     '',
@@ -9952,6 +9999,8 @@ function buildMasterPrompt(f) {
     '═══════════════════════════════════════',
     '# PASS 1 APPROVAL GATE — HARD STOP',
     '═══════════════════════════════════════',
+    '',
+    '**This IS Step 8\'s single Pass 1 human checkpoint — it REPLACES the plain "script preview" handoff written inside the Step 8 body. Do not pause the operator twice: run the audit first, then emit THIS gate (with audit verdicts), and only continue to Step 8\'s Pass 2 recap document after the operator replies GO.**',
     '',
     'Once all scripts have been audited (≥90 or 3-attempts exhausted) and storyboards validated, emit exactly this block — do NOT continue past it without an explicit GO from the operator:',
     '',
@@ -10021,7 +10070,7 @@ function buildMasterPrompt(f) {
     ''
   ].join('\n');
 
-  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, sec6, secRubric, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
+  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, secPreflight, sec6, secRubric, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
 }
 
 function buildPrompt(pid) {
