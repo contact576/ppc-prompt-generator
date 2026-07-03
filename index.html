@@ -1755,7 +1755,7 @@ Then at the end, a clean copy-paste block of just the permalinks:
 The permalinks above are for human review. The actual scripts get extracted by YOU, right now. Captions cover maybe 20-30% of what a video ad communicates — the spoken script is the rest.
 
 1. **Source the video files:** from the Step 7 shortlist, take each ad's video CDN URL from the scrape data (\`snapshot.videos[].videoHdUrl\`, fall back to \`videoSdUrl\`). These signed URLs expire within hours — transcription MUST happen in this same session, immediately after the scrape. (This is the one legitimate internal use of CDN URLs; they still never appear in the report.)
-2. **Transcribe up to 10 videos (hard cap 15):** call the Apify transcription actor \`donjuan_mime/audio-video-to-text\` through the same Apify connection used for the scrape, input: \`{ "model": "base", "source_url": "<the videoHdUrl>" }\`. If that actor is unavailable, search the Apify store for an equivalent "video to text" / Whisper actor and use it. If a video fails to transcribe, write "TRANSCRIPT UNAVAILABLE — [reason]" and continue. NEVER invent a transcript.
+2. **Transcribe up to 10 videos (hard cap 15):** call the Apify transcription actor \`donjuan_mime/audio-video-to-text\` through the same Apify connection used for the scrape, input: \`{ "model": "small", "language": "<hint>", "source_url": "<the videoHdUrl>" }\`. Use \`"small"\` (not \`"base"\`) — these competitor scripts are the chain's highest-value intel, and \`base\` mis-hears brand names, offers, and numbers often enough to poison the downstream analysis. Set \`"language"\` to the market's language from [GEOGRAPHY] (\`"en"\` for English markets, \`"fr"\` for Québec / French-Canadian, etc.) — a language hint sharply reduces word-error rate; omit the field only if the market language is genuinely unknown. If \`small\` is unavailable on the actor, fall back to \`"base"\` rather than failing. If that actor is unavailable, search the Apify store for an equivalent "video to text" / Whisper actor and use it. If a video fails to transcribe, write "TRANSCRIPT UNAVAILABLE — [reason]" and continue. NEVER invent a transcript.
 3. **Per transcribed video, output:**
 
 \`\`\`
@@ -2062,6 +2062,16 @@ For every Tier 1 and Tier 2 competitor identified, fetch their paid-traffic land
 - Form fields (if applicable)
 - How the offer/promotion is surfaced
 
+## Source 4: Client's Own Google Ads Account — Auction Insights (CONDITIONAL — existing client only)
+If [CLIENT NAME] has an existing/connected Google Ads account (Adzviser \`google_ads\` or the connected Google Ads MCP), pull the **Auction Insights** report for the client's top Search campaigns over the last 30–90 days. This is the ONE competitive signal you cannot scrape — it's who [CLIENT NAME] *actually* collides with in the live auction, straight from Google:
+- Competing domains and their **Impression Share** overlap
+- **Overlap Rate**, **Position Above Rate**, **Outranking Share**, **Top-of-Page Rate**
+- The client's own **Search Impression Share**, **Search Lost IS (Budget)**, **Search Lost IS (Rank)**
+
+Cross-reference the Auction Insights domains against your scraped competitor set — a domain that shows high overlap here but was NOT in your scraped list is a competitor you missed; run it back through the 4-criteria filter and add it.
+
+If the client is NEW (no account) or the account isn't connected, state "N/A — no Google Ads account access (new client); competitive picture is scrape-only" and continue. Do NOT fabricate Auction Insights numbers — they exist only inside a real account.
+
 ---
 
 # COMPETITOR DISCOVERY PROTOCOL (CRITICAL)
@@ -2223,6 +2233,41 @@ Every unique offer found across competitors:
 
 Identify: what's the DOMINANT offer in this market (what customers expect to see).
 
+### H) Auction Insights & Impression Share (existing client only — from Source 4)
+If Source 4 returned data, build:
+
+| Competing Domain | Impression Share | Overlap Rate | Position Above Rate | Outranking Share |
+|---|---|---|---|---|
+| [domain] | X% | X% | X% | X% |
+
+Then state the client's own auction health:
+- Search Impression Share: X%  (healthy target: 60%+)
+- Search Lost IS (Budget): X%  → if high, the client is capped by budget, not losing on quality
+- Search Lost IS (Rank): X%  → if high, the problem is Ad Rank (bids / Quality Score / relevance), not budget
+
+One-line read: is [CLIENT NAME] losing the auction primarily to **budget** or to **rank**? That single distinction changes the whole Google strategy. If Source 4 was N/A, write "N/A — no account access" and skip the table.
+
+### I) Branded-Term Defense
+Two questions, answered from the scraped Search sponsored results:
+1. **Is anyone poaching [CLIENT NAME]'s brand?** Did any competitor ad appear when you searched the client's own brand name / brand + service? List each poacher and the ad they ran. Brand poaching is a direct, cheap threat that demands a defensive brand campaign.
+2. **Is [CLIENT NAME] defending its own brand terms?** (existing client, from Source 4 / account) — is there an active branded campaign? If competitors bid on the client's brand and the client runs no brand defense, flag it as an **urgent, low-cost win**.
+
+| Brand Search Tested | Competitor Poaching? | Who | Client Defending? |
+|---|---|---|---|
+| "[CLIENT NAME]" | Yes / No | [competitor] | Yes / No / N/A (new) |
+| "[CLIENT NAME] [service]" | Yes / No | [competitor] | Yes / No / N/A (new) |
+
+### J) Competitor-Derived Negative Keywords
+From the ads you EXCLUDED in Step 4 (hiring, B2B, informational) and from the irrelevant search results you saw, derive a starter negative-keyword list — the terms that pull the wrong intent in THIS vertical. This saves [CLIENT NAME] real spend on day one.
+
+| Negative Keyword | Why (what wrong intent it blocks) | Match Type |
+|---|---|---|
+| jobs / careers / hiring | recruitment traffic, not customers | phrase |
+| DIY / how to / free | non-buyers researching | phrase |
+| [vertical-specific, e.g. "wholesale", "parts", "used"] | [reason] | [broad/phrase/exact] |
+
+Aim for 10–20 real negatives grounded in what you actually observed — not a generic template list.
+
 ## Step 7 — Keyword Gap Analysis
 
 Output a Keyword Opportunity Map showing:
@@ -2331,12 +2376,21 @@ For each:
 ## 11. KEYWORD OPPORTUNITY MAP
 Table from Step 7 with 🟢🟡🔴 ratings.
 
-## 12. 🎯 THE GAP — WHAT [CLIENT NAME] SHOULD DO
+## 12. AUCTION INSIGHTS & IMPRESSION SHARE
+Table + budget-vs-rank read from Step 6H. If new client: "N/A — no account access."
 
-### 12A. Immediate Opportunities
-### 12B. Competitive Gaps (pain points no one addresses)
-### 12C. What to Avoid
-### 12D. Recommended First 3 Google Ads Angles for [CLIENT NAME]
+## 13. BRANDED-TERM DEFENSE
+Poaching + defense tables from Step 6I, with the urgent-win flag if applicable.
+
+## 14. COMPETITOR-DERIVED NEGATIVE KEYWORDS
+The 10–20 negative starter list from Step 6J.
+
+## 15. 🎯 THE GAP — WHAT [CLIENT NAME] SHOULD DO
+
+### 15A. Immediate Opportunities
+### 15B. Competitive Gaps (pain points no one addresses)
+### 15C. What to Avoid
+### 15D. Recommended First 3 Google Ads Angles for [CLIENT NAME]
 
 ═══════════════════════════════════════
 END OF STEP 3 REPORT
@@ -2352,6 +2406,9 @@ Before delivering, verify:
 - [ ] Did every competitor in the analysis pass all 4 criteria (Industry + Service + Scale + Geography)?
 - [ ] If fewer than 3 competitors passed, did I explicitly state "Insufficient comparable competitors" instead of padding with irrelevant ones?
 - [ ] Did I classify every scraped ad (lead-gen vs exclude) with counts?
+- [ ] Did I pull Auction Insights if an account exists (or state N/A for new clients) — and read budget-vs-rank loss?
+- [ ] Did I check branded-term poaching AND the client's own brand defense?
+- [ ] Did I derive a real negative-keyword list from what I observed (not a generic template)?
 - [ ] Did I tier competitors (Tier 1/2/3) with objective criteria?
 - [ ] Did I cite REAL competitor names and REAL ad copy in every pattern table?
 - [ ] Did I avoid generic "competitors often use X" statements?
@@ -2740,11 +2797,15 @@ Cite specific, recent takes. Name the expert and link the source.
 |---|---|---|---|
 | [Name] | [Specific recommendation — one sentence] | [URL] | 🟢 / 🟡 / 🔴 |
 
-#### Audience Strategy (Broad vs Advantage+ vs Lookalike vs Interest)
-Same table format. What's the 2025-2026 consensus for [PRIORITY_1]? Any contrarian takes?
+#### Audience Strategy (Advantage+ default → when to override with Original Audiences)
+Same table format. **Baseline the framing to the 2026 paradigm, not the 2023 one.** Meta has consolidated targeting: **Advantage+ Audience is now the default** for most lead-gen, with your inputs treated as *suggestions* the system can expand past, not hard constraints. So do NOT frame this as a flat "Broad vs Advantage+ vs Lookalike vs Interest" menu of equals. Frame it as:
+- **Default:** Advantage+ Audience with the client's best signals as audience *suggestions* (customer list, high-intent interests, past converters).
+- **When to override** back to Original Audiences / manual (e.g., very tight geo, regulated categories, tiny niche where A+ over-expands, or a specific expert-cited exception for [PRIORITY_1]).
+- **Lookalikes:** note that their role has shrunk under A+ — position them as a *signal/suggestion source* feeding A+, not a standalone primary strategy, unless an expert specifically argues otherwise for [PRIORITY_1].
+Capture the 2025-2026 expert consensus AND any contrarian who still runs manual — but the default recommendation should be Advantage+ unless the data for [PRIORITY_1] says otherwise.
 
-#### Creative Format (UGC / Testimonial / Problem-Agitate-Solution / Talking-Head / Static)
-Same table format. What converts best for [PRIORITY_1] right now?
+#### Creative Format & Volume (UGC / Testimonial / Problem-Agitate-Solution / Talking-Head / Static)
+Same table format. What converts best for [PRIORITY_1] right now? **Also capture the creative-volume angle (the "Andromeda" / creative-diversity era):** under Advantage+, the lever that used to be audience slicing is now *creative variety* — the system needs a healthy volume of distinct concepts/angles to optimize across. Note what experts say about how many creatives/angles per ad set [PRIORITY_1] needs to feed the algorithm, not just which single format wins.
 
 #### Bidding Strategy (Cost Cap / Bid Cap / Lowest Cost / Highest Volume)
 Same table format.
@@ -3519,11 +3580,12 @@ For every ad:
 - Attribution window settings
 - Conversion discrepancies
 
-## 1G. Audience Data
+## 1G. Audience & Creative-Volume Data
 - All Custom Audiences: type, size, freshness
 - All Lookalike Audiences: source, %, country
 - All Saved/Interest Audiences used
-- Advantage+ vs Manual targeting comparison
+- **Advantage+ adoption audit (2026 lens):** what share of spend runs through Advantage+ Audience vs. legacy manual/Interest/Lookalike targeting? Flag ad sets still stuck on narrow manual targeting that Advantage+ would likely outperform — running 2023-style manual audiences in 2026 is itself a finding, not a neutral choice. Note where manual is *correctly* retained (tight geo, regulated category, deliberate expert-cited exception).
+- **Creative volume vs. audience slicing:** how many distinct creative concepts/angles are live per ad set? Under Advantage+ the optimization lever is creative variety, not audience splits — an account with many narrow ad sets but only 1–2 creatives each is mis-structured for the current paradigm. Flag it.
 - Retargeting vs Prospecting spend split + performance
 
 ---
@@ -3656,6 +3718,8 @@ Days-to-fatigue per declining ad.
 | Interest-based | | | | | |
 | Broad | | | | | |
 | Retargeting | | | | | |
+
+**Interpret with the 2026 lens:** if manual/Interest ad sets currently beat Advantage+ here, check *why* before recommending "keep manual" — often it's insufficient creative volume or a starved A+ budget, not manual being superior. The default forward recommendation is to consolidate into Advantage+ with more creative variety unless the data shows a durable, structural reason manual wins for this account.
 
 ### 4B. Geographic Performance
 Top 3 best/worst cities by Cost/Result.
@@ -4453,8 +4517,16 @@ Apply these creative gates to every script you write:
 2. **Service noun in primary text** — surface the service in the first 6 words.
 3. **One concept per ad** — single Hook, single Message, single Offer angle, single CTA. NO Option A/B alternatives.
 4. **Statics declare archetype** — every static specifies ONE of: Poster / Proof Shot / Review Screenshot / Before-After Split / Big Number / Comparison. Each archetype's required ingredient must actually exist in the chain data (e.g., no real review → no Review Screenshot).
-5. **Numbers must trace** — any number in any script (Hook/Message/Offer/CTA/overlay) traces to Step 1, Step 2, Step 4 or Step 6. If it can't, use qualitative language ("most customers" not "73%").
-6. **Logo-swap test** — if a competitor could post this script unchanged, it's generic. Rewrite with the client's proof / place / personality.
+5. **Videos declare a STORY archetype** — every video specifies ONE of:
+   - **PAS** (Problem → Agitate → Solve) — lead with the pain, twist it, resolve with the service.
+   - **Demo / How-It-Works** — show the service happening; process/result-led.
+   - **Listicle** ("3 reasons…" / "5 signs you need…") — enumerated, fast-cut, snackable.
+   - **Founder / Team POV** — a person on camera speaking directly; authority + trust.
+   - **Testimonial / UGC** — real-customer voice, transformation-led (only if a real review/result exists in the chain data).
+   Each archetype's required ingredient must actually exist in the chain data — no fabricated testimonial, no demo footage you can't plausibly stage. This mirrors gate 4 for statics: it forces genuine creative variety instead of the same hook→problem→solution→offer→CTA arc every time.
+6. **Video archetype VARIETY per ad set** — when an ad set has ≥2 video ads, they MUST use ≥2 *different* story archetypes (e.g., 1A-V1 = PAS, 1A-V2 = Founder POV). Never ship two videos with the same archetype in one ad set — that's the video equivalent of the static-variety rule, and it's what feeds Advantage+ the creative diversity it needs to optimize. Pick archetypes suited to the service and to the winning structures decoded in Step 2 Section 10A.
+7. **Numbers must trace** — any number in any script (Hook/Message/Offer/CTA/overlay) traces to Step 1, Step 2, Step 4 or Step 6. If it can't, use qualitative language ("most customers" not "73%").
+8. **Logo-swap test** — if a competitor could post this script unchanged, it's generic. Rewrite with the client's proof / place / personality.
 
 Brainstorm internally 2-3 candidate scripts per ad slot, score on the gates above, output only the winners. Do not show the candidates.
 
@@ -4472,12 +4544,14 @@ Brainstorm internally 2-3 candidate scripts per ad slot, score on the gates abov
 ### Ad Set 1A · [Service Name]
 
 **Video Ad 1A-V1**
+- Archetype: [PAS / Demo / Listicle / Founder-POV / Testimonial-UGC — per Video Story Archetype gate; must differ from other videos in this ad set]
 - Hook: [...]
 - Message: [...]
 - Offer: [...]
 - CTA: [...]
 
 **Video Ad 1A-V2**
+- Archetype: [a DIFFERENT archetype than 1A-V1]
 - Hook: [...]
 - Message: [...]
 - Offer: [...]
@@ -4630,6 +4704,7 @@ Before delivering the document in Pass 2:
 - [ ] Scripts wrapped in \`::: script-card\` ... \`:::\` blocks?
 - [ ] Every ad from Pass 1 has its own script card in Section 5 (none hidden, none summarized)?
 - [ ] Each script card has ONE concept (no Option A / Option B pairs)?
+- [ ] Every video declared a Story Archetype in Pass 1, and each ad set with ≥2 videos used ≥2 different archetypes (no duplicate arcs per ad set)?
 - [ ] Scripts contain ONLY Hook/Message/Offer/CTA — no production specs, no Editor table, no Palak design specs?
 - [ ] Section 5 ends with ONE Global Approval block covering all 5.1/5.2/5.3 items as a package — not per-card signatures?
 - [ ] No "Account Manager" name or contact appears anywhere in the document (Pass 2 deliverable)?
@@ -5259,18 +5334,25 @@ Every word of the script — voiceover/dialogue AND on-screen overlay text — m
 - Split the on-screen overlay text into N chunks the same way (overlays may overlap a voiceover beat or be silent — that's fine)
 - Confirm: paste all panel "Voiceover" lines back-to-back → you should get the original spoken script verbatim. Same for overlay text.
 
-**4. Panel-by-panel arc (use this 9-panel default; adjust for 8 or 10):**
-- Panel 1 = **Hook frame 1** — the visual that stops the scroll (subject + unexpected element)
-- Panel 2 = **Hook payoff / setup** — the second beat that makes the viewer commit to watching
-- Panel 3 = **Problem or tension** — what's wrong / what's missing / what's frustrating
-- Panel 4 = **Problem amplified or pivot to solution** — the moment the value prop starts
-- Panel 5 = **Solution introduction** — the service in action, named, visible
-- Panel 6 = **Proof / demo / testimonial** — credibility moment (real shot, transformation, customer)
-- Panel 7 = **Offer reveal** — the price / promo / guarantee surfaces
-- Panel 8 = **Offer detail or urgency** — what's included, deadline, scarcity, de-risk line
-- Panel 9 = **CTA** — exact action, phone/site shown, logo
+**4. Panel-by-panel arc — CHOOSE THE ARC THAT MATCHES THIS VIDEO'S DECLARED ARCHETYPE (from Pass 1).**
+Do NOT force every video into the same beats. Read the video's Archetype line and use the matching arc below (shown at the 9-panel default; compress to 8 or expand to 10 the same way as the panel-count rule). The word-by-word allocation rule in step 3 still applies regardless of arc.
 
-For 8 panels, merge Panels 3+4 into one "Problem → Solution" beat. For 10 panels, split Panel 6 (Proof) into two beats: testimonial + transformation.
+**PAS (Problem → Agitate → Solve) — the classic 9-beat default:**
+- P1 **Hook frame 1** (scroll-stopper) · P2 **Hook payoff/setup** · P3 **Problem** · P4 **Problem amplified** · P5 **Solution introduced** (service named, visible) · P6 **Proof/demo** · P7 **Offer reveal** · P8 **Offer detail/urgency** · P9 **CTA**
+
+**Demo / How-It-Works:**
+- P1 **Hook: the end result** (the finished transformation up front) · P2 **"Here's how"** setup · P3 **Step 1 of the process** · P4 **Step 2** · P5 **Step 3** · P6 **Result / before→after** · P7 **Proof point** (review, credential) · P8 **Offer** · P9 **CTA**
+
+**Listicle ("3 reasons…" / "5 signs…"):**
+- P1 **Hook: the list promise** ("3 signs your furnace is about to fail") · P2 **Item 1** · P3 **Item 2** · P4 **Item 3** · P5 **(Item 4/5 or) payoff turn** · P6 **Bridge to the service** · P7 **Proof** · P8 **Offer** · P9 **CTA** — fast cuts, big overlay numbers per item.
+
+**Founder / Team POV:**
+- P1 **Founder on camera, direct address hook** · P2 **Who they are / credibility** · P3 **The problem they see clients face** · P4 **Their belief / different approach** · P5 **The service explained by them** · P6 **Proof they point to** · P7 **Offer, stated personally** · P8 **Reassurance / de-risk** · P9 **CTA, direct to camera**
+
+**Testimonial / UGC:**
+- P1 **Customer hook — raw, mid-sentence relatable line** · P2 **Their "before" situation** · P3 **The turning point (finding the client)** · P4 **The experience** · P5 **The result they got** · P6 **Emotional payoff / recommendation** · P7 **B-roll of service + offer overlay** · P8 **Offer detail** · P9 **CTA**
+
+For 8 panels, merge the two weakest adjacent middle beats. For 10 panels, split the proof/result beat into two (testimonial + transformation). If two videos in the same ad set share this template, they must be running DIFFERENT arcs above (per the variety gate) — the storyboards should look visibly different, not recolored copies.
 
 **5. Derive the visual scene per panel** — match the script intent to a believable scene given the service category. Examples:
 - HVAC: shivering homeowner → thermostat showing low temp → technician at door → tech replacing furnace → digital airflow visual → relieved family → offer screen with $X OFF → fine-print deadline → hand calling
@@ -6625,8 +6707,9 @@ For each ad set from Step 9's structure, present this complete block. Inside eac
 **Why this works:** [1-2 sentences citing chain data — Step 2 competitor pattern, Step 4 cheat code, etc.]
 
 ##### CONCEPT
+- **Story Archetype:** [PAS / Demo / Listicle / Founder-POV / Testimonial-UGC — carry over the archetype declared for this video in Step 8 Pass 1. If two videos share an ad set, they must be different archetypes. This drives the pacing note and the ON-SCREEN/VOICEOVER beat structure below.]
 - **Hook (first 3 sec):** [One sentence — what the viewer sees/hears that stops the scroll. The 1-second rule applies to video too: within the first second, the viewer must know WHAT service this is about — name it or show it unmistakably on screen.]
-- **Message:** [3-5 sentences — story arc]
+- **Message:** [3-5 sentences — story arc that follows the declared archetype's beats]
 - **Offer:** [Exact offer surfaced in the ad]
 - **CTA:** [Exact CTA matching [CONVERSION_DESTINATION]]
 
@@ -6847,6 +6930,7 @@ Before delivering, verify:
 - [ ] Format selections respect \`[UGC_PRODUCTION_MODE]\` constraints?
 - [ ] Each ad set has the right ad count: \`[NUM_VIDEO_SCRIPTS]\` videos + \`[NUM_STATIC_SCRIPTS]\` statics?
 - [ ] Each ad has ONE creative concept (no "Option 1 / Option 2 / Both")?
+- [ ] Each video ad states its Story Archetype, and every ad set with ≥2 videos uses ≥2 different archetypes (no duplicate arcs in one ad set)?
 - [ ] Each video ad has Production Specs table?
 - [ ] Each video ad has Editor Section with 3-column table (ON-SCREEN | VOICEOVER | DURATION)?
 - [ ] Each static ad has Palak Section but NO Editor Section?

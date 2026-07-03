@@ -90,21 +90,33 @@ This is the "what could be better" list. Nothing here is started; each needs a g
   reports the takeaway, with no knowledge of the rubric. Tests real stopping power. *(medium)*
 - **Visual-hook decoding** (owner explicitly wanted this) — Step 7A only transcribes audio;
   add Gemini/keyframe vision to decode the competitor's VISUAL first second. *(medium)*
-- **Multiple video story archetypes** (PAS / Demo / Listicle / Founder-POV) instead of one
-  fixed 8-10 panel arc, with ≥2 per ad set — mirrors the static archetype variety rule.
+- ✅ **SHIPPED (2026-07-03)** — **Multiple video story archetypes** (PAS / Demo / Listicle /
+  Founder-POV / Testimonial-UGC) instead of one fixed 8-10 panel arc. P8 SCRIPT DERIVATION RULES
+  gained a "video declares a STORY archetype" gate + a per-ad-set variety gate (≥2 videos ⇒ ≥2
+  different archetypes, mirroring the static rule); the storyboard derivation now branches its
+  panel arc on the declared archetype; P10 carries the archetype into the editor handoff; both
+  Pass 1 and P10 checklists validate the variety rule.
 
 ### Tier 3 — Tooling & currency
-- **Whisper is pinned to `base`** (lowest accuracy) on the chain's highest-value intel →
-  bump to `small`/`medium` + `en`/`fr-CA` language hint. *(quick)*
-- **Meta 2026 currency** — P4/P6 still frame strategy as "Broad vs Advantage+ vs Lookalike"
-  (a 2023 model). Re-baseline to the Advantage+-default / Andromeda creative-volume paradigm.
+- ✅ **SHIPPED (2026-07-03)** — **Whisper bumped `base` → `small` + language hint.** P2 Step 7A
+  transcription now requests `model: "small"` with a `language` hint derived from `[GEOGRAPHY]`
+  (`en`/`fr`…), with a graceful fallback to `base` if `small` is unavailable. Better word-error
+  rate on the chain's highest-value intel (competitor scripts) with negligible added runtime.
+- ✅ **SHIPPED (2026-07-03)** — **Meta 2026 currency re-baseline.** P4's audience sub-section and
+  P6's audience-audit section were reframed from the 2023 "Broad vs Advantage+ vs Lookalike" menu
+  to the **Advantage+-default → when-to-override** model, plus a **creative-volume ("Andromeda")**
+  angle (variety is the optimization lever, not audience slicing). P6 now audits A+ adoption and
+  creative-volume-per-ad-set as findings.
 - **Programmatic image generation** (image-gen MCP) with an in-loop render → re-audit →
   regenerate cycle, replacing the manual "paste into ChatGPT image gen" handoff.
 - **Automated A/B hook-variant generation** off the existing auditor loop (3 hooks/script).
 - **Higgsfield** video/avatar generation + virality predictor wired to the already-collected
   UGC-production-mode intake field (currently collected then ignored).
-- **P3 (Google competitor intel) depth** — add Auction Insights / Search Impression Share +
-  branded-term defense + competitor-derived negative keywords (P2 is much deeper than P3).
+- ✅ **SHIPPED (2026-07-03)** — **P3 (Google competitor intel) depth.** Added Source 4 (client's
+  own-account **Auction Insights / Impression Share**, conditional on an existing account, with a
+  budget-vs-rank loss read), **branded-term defense** (poaching check + client brand-defense check),
+  and **competitor-derived negative keywords** (10–20 grounded in the excluded/irrelevant ads).
+  New output sections 12–14 + checklist items. Brings P3 toward P2's depth.
 - **Voice-of-customer mining** — scrape review corpora/forums for the client's real pain
   language and feed it verbatim into creative (serves the 1-second rule directly).
 
