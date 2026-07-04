@@ -2563,6 +2563,19 @@ Briefly plan:
 - How will I distinguish 🟢 Consensus from 🔴 Contrarian claims?
 - Which service will most likely emerge as the ONE recommendation? Is there a Strong Runner-Up worth flagging?
 
+## Step 1.5 — ACCOUNT-DATA-FIRST BENCHMARKS (query our OWN connected accounts BEFORE web search)
+
+Web-guessed benchmarks are generic and are the #1 accuracy weakness of this step. Our agency has real accounts connected via the **Adzviser MCP** (plus the Meta Ads / Google Ads MCPs) — our own book of clients. For every NUMERIC benchmark (CPL, CPM, CTR, and where available hook-rate / CVR), pull REAL numbers from our connected accounts FIRST; web search becomes the fallback + sanity-check, not the primary source.
+
+For each Top-3 service, before the web searches:
+1. **Find comparable own-accounts.** Call Adzviser \`list_workspace\` to see connected accounts, then pick the ones in the SAME or an adjacent vertical (e.g., for an HVAC client, our other HVAC / home-services accounts).
+2. **Pull real numbers.** Use Adzviser \`retrieve_reporting_data\` (fb_ads for Meta) to pull CPL / CPM / CTR / cost-per-result over the last 30–90 days for those accounts, lead-gen campaigns only.
+3. **Compute the real benchmark.** Report a median + top-decile CPL for this vertical/platform and the best-performing creative format, tagged \`🟢 OWN-ACCOUNT DATA\`. This — not a web average — is the authoritative **"Target CPL to Beat."**
+4. **Confidentiality (mandatory).** Report ONLY the aggregated vertical benchmark (a range + median). NEVER expose another client's name or identifiable numbers ("Client X did $Y CPL") in the output.
+5. **No comparable account?** State it explicitly ("No comparable own-account data for [SERVICE] — using web benchmarks") and fall through to the web searches.
+
+Then run Step 2's web searches to (a) fill what our accounts can't give (expert strategy, seasonality, platform changes) and (b) sanity-check the own-account numbers against the public range. **When the two disagree, trust the OWN-ACCOUNT data and note the delta.**
+
 ## Step 2 — Research via Web Search
 
 ### Required searches for EACH Top-3 Service ([PRIORITY_1], [PRIORITY_2], [PRIORITY_3] — only those populated):
@@ -3200,6 +3213,10 @@ Every insight you surface must be tagged:
 - Which Google Ads experts to research for this vertical
 - What 2025-2026 platform changes matter most (AI Max, PMax evolution, Consent Mode V2, Enhanced Conversions)
 - How to distinguish 🟢 Consensus from 🔴 Contrarian
+
+## Step 1.5 — ACCOUNT-DATA-FIRST BENCHMARKS (query our OWN connected accounts BEFORE web search)
+
+Same rule as the Meta research step: pull REAL Google Ads benchmarks from our own connected accounts before web-guessing. Call Adzviser \`list_workspace\`, pick our accounts in the same/adjacent vertical, then \`retrieve_reporting_data\` (google_ads) for CPC / CTR / conversion rate / CPA / cost-per-lead over the last 30–90 days (lead-gen campaigns). Report the median + top-decile as \`🟢 OWN-ACCOUNT DATA\` — the authoritative "Target CPA/CPL to Beat." Report aggregated vertical numbers ONLY (never another client's name or identifiable figures). If no comparable account exists, say so and fall through to the web searches. Use the web searches below to fill gaps (expert strategy, seasonality, platform changes) and sanity-check; when they disagree with our account data, trust the account data and note the delta.
 
 ## Step 2 — Research via Web Search
 
@@ -9835,21 +9852,28 @@ function buildMasterPrompt(f) {
     const sep = isLast ?
       '\n\n═══════════════════════════════════════\n# ✅ STEP ' + stepNum + ' COMPLETE — END OF CHAIN\n═══════════════════════════════════════\n\nThis is the final step of this run. After completing it, run the final-consolidation logic below and produce the final deliverable per the chosen outcome.\n' :
       '\n\n═══════════════════════════════════════\n# ═══ STEP ' + stepNum + ' → STEP ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' ═══\n═══════════════════════════════════════\n\n1. Save the Step ' + stepNum + ' full output to Drive as `PPCGuru_Step-' + String(stepNum).padStart(2, '0') + '_<ShortName>.md` (folder "PPC Guru Research Vault / ' + clientName + '"). Confirm: "✅ Vault updated: <filename>".\n2. Run a one-line self-check: did this step produce all sections it was asked to? If no — STOP and emit a failure brief. If yes — continue to Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + '.\n3. RELOAD-ON-ENTRY: begin Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' by reloading from the vault the specific prior-step files it references (per Operating Rule 2) — do not trust conversation memory, which may have been auto-compacted.\n' + (qcAgentsOn && ['p2','p3','p4','p5'].includes(pid) ? '4. Invoke the `research-qc` sub-agent (a real, separate agent) on the Step ' + stepNum + ' output and paste its raw verdict. If "Pass" → continue. If weak-claim flags → patch them with one targeted MCP re-query (within budget cap), re-save vault, then continue.\n' : '') + (qcAgentsOn && ['p6','p7'].includes(pid) ? '4. Invoke the `audit-qc` sub-agent (a real, separate agent) on the Step ' + stepNum + ' output and paste its raw verdict. If "Pass" → continue. If missing-data flags → mark them in the output and continue (audit data is best-effort).\n' : '');
-    return '═══════════════════════════════════════\n# STEP ' + stepNum + ' OF ' + stepList.length + ' — ' + stepName + '\n═══════════════════════════════════════\n\n' + body + sep;
-  }).join('\n');
+    return { pid: pid, text: '═══════════════════════════════════════\n# STEP ' + stepNum + ' OF ' + stepList.length + ' — ' + stepName + '\n═══════════════════════════════════════\n\n' + body + sep };
+  });
+  // Split the chain so the creative audit + Pass-1 approval gate executes AT the script-authoring
+  // step (P8, or P10 if P8 absent) — before P9/P11/P10 consume the approved scripts — instead of
+  // being appended after "END OF CHAIN". chainAfterGate is '' when there is no script step.
+  const _gateStep = hasScriptSteps ? (stepList.indexOf('p8') !== -1 ? 'p8' : 'p10') : null;
+  const _gateCut = _gateStep ? stepBodies.findIndex(function(e) { return e.pid === _gateStep; }) : -1;
+  const chainThroughGate = (_gateCut >= 0 ? stepBodies.slice(0, _gateCut + 1) : stepBodies).map(function(e) { return e.text; }).join('\n');
+  const chainAfterGate = (_gateCut >= 0 ? stepBodies.slice(_gateCut + 1) : []).map(function(e) { return e.text; }).join('\n');
 
   // --- Section 5c: MCP PRE-FLIGHT + RESUME (fail fast before a long unattended run) ---
   // Derive exactly which connectors THIS run needs from the selected steps, so the
   // pre-flight names them specifically rather than probing everything.
   const needApify = stepList.includes('p2') || stepList.includes('p3');
   const needMetaAds = stepList.includes('p2') || stepList.includes('p6');
-  const needAdzviser = stepList.includes('p6') || stepList.includes('p7');
+  const needAdzviser = stepList.includes('p4') || stepList.includes('p5') || stepList.includes('p6') || stepList.includes('p7');
   const needGoogleAds = stepList.includes('p7');
   const preflightChecks = [];
   preflightChecks.push('- **Google Drive** (always — the Research Vault): confirm you can list/create the folder "PPC Guru Research Vault / ' + clientName + '". This is where every step is saved; if it fails, nothing downstream is recoverable.');
   if (needApify) preflightChecks.push('- **Apify** (Steps ' + [stepList.includes('p2') ? '2' : '', stepList.includes('p3') ? '3' : ''].filter(Boolean).join(' + ') + ' — competitor scraping): confirm the connector responds (a cheap call such as listing your actors or a docs search). Do NOT run a paid scrape here — just confirm auth.');
   if (needMetaAds) preflightChecks.push('- **Meta Ads** (Step ' + [stepList.includes('p2') ? '2 discovery' : '', stepList.includes('p6') ? '6 audit' : ''].filter(Boolean).join(' + ') + '): confirm the connector responds. For Step 6 you also need the client Meta ad-account id (act_…); if intake did not provide it, ADD it to the upfront interview and confirm it resolves to exactly one account before Step 6.');
-  if (needAdzviser) preflightChecks.push('- **Adzviser** (Steps ' + [stepList.includes('p6') ? '6' : '', stepList.includes('p7') ? '7' : ''].filter(Boolean).join(' + ') + ' — account audit): confirm the connector responds and that a workspace/account for this client exists. If the client has no connected account, mark Steps 6/7 "N/A — no account access (new client)" NOW rather than discovering it mid-run.');
+  if (needAdzviser) preflightChecks.push('- **Adzviser** (Steps ' + [ (stepList.includes('p4') || stepList.includes('p5')) ? '4/5 benchmarks' : '', stepList.includes('p6') ? '6' : '', stepList.includes('p7') ? '7' : ''].filter(Boolean).join(' + ') + '): confirm the connector responds and list our connected workspaces. Steps 4/5 pull our own-account benchmarks; Steps 6/7 audit the client\'s own account. If no comparable account exists for benchmarks, note it and fall back to web; if the client has no own account, mark Steps 6/7 "N/A — no account access (new client)" NOW rather than discovering it mid-run.');
   if (needGoogleAds) preflightChecks.push('- **Google Ads** (Step 7 audit): confirm the connector responds and the client customer id is available; otherwise mark Step 7 "N/A — no account access".');
   const secPreflight = [
     '═══════════════════════════════════════',
@@ -9879,9 +9903,9 @@ function buildMasterPrompt(f) {
     '',
     'Execute each step in order. Between steps, run the vault-save + self-check protocol shown in the ═══ STEP N → N+1 ═══ separator. Do not skip ahead and do not parallelize the steps — they have data dependencies.',
     '',
-    hasScriptSteps ? '**CREATIVE-PHASE WIRING (read before Step 8).** Step 8 authors the ad scripts. When Step 8 reaches its "Pass 1 — Script Preview", DO NOT show the raw scripts to the strategist yet. First jump forward to the **CREATIVE PRODUCTION PROTOCOL — 90/100 GATE** + **EMBEDDED CREATIVE AUDIT RUBRIC** (printed after this step chain for reference) and run every script through the audit + storyboard validation. THEN present the audited scripts at the single **PASS 1 APPROVAL GATE** — that gate IS Step 8\'s Pass 1 human checkpoint (there is only ONE script-approval pause, not two). The "END OF CHAIN" marker after the last step marks the end of the RESEARCH steps only; creative audit, Phase B image upload, and the final client document are phases of Step 8 / creative production executed at that point — not a separate stage tacked on after everything. Do not produce Step 8\'s Pass 2 recap document until after the Pass 1 approval.' : '',
+    hasScriptSteps ? '**CREATIVE-PHASE WIRING.** Step 8 authors the ad scripts. Immediately after Step 8\'s script drafting — and BEFORE the next step (P9/P11/P10) consumes them — the chain routes into the **CREATIVE PRODUCTION PHASE** (Embedded Creative Audit Rubric → 90/100 gate → the single Pass-1 Approval hard stop), which is printed inline right after Step 8 below. That approval gate IS Step 8\'s single Pass-1 human checkpoint — it replaces the plain "script preview" handoff written inside the Step 8 body (there is only ONE script-approval pause, not two). Do not show raw un-audited scripts to the strategist, and do not produce Step 8\'s Pass 2 recap document until after the Pass-1 approval. The "END OF CHAIN" marker later marks the end of the RESEARCH/spec steps; Phase B image upload and the final client document then follow.' : '',
     '',
-    stepBodies
+    chainThroughGate
   ].join('\n');
 
   // --- Section 6b: Embedded creative audit rubric (self-contained; replaces the external skill) ---
@@ -9978,7 +10002,7 @@ function buildMasterPrompt(f) {
     '# CREATIVE PRODUCTION PROTOCOL — 90/100 GATE',
     '═══════════════════════════════════════',
     '',
-    '**(Placement note: this section is printed here, after the step chain, for reference — but it EXECUTES during Step 8, at its Pass 1, per the Creative-Phase Wiring note in the step chain. Run it there, not at the end of the run.)**',
+    '**(You have just completed Step 8\'s script drafting. Run this creative gate NOW — before the next step consumes the scripts — then the single Pass-1 Approval hard stop below. Do not advance to the next step until the operator replies GO.)**',
     '',
     'When Step 8 reaches Pass 1 (creative scripts) — BEFORE showing anything to the strategist — every script must go through this loop:',
     '',
@@ -10070,7 +10094,7 @@ function buildMasterPrompt(f) {
     ''
   ].join('\n');
 
-  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, secPreflight, sec6, secRubric, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
+  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, secPreflight, sec6, secRubric, sec7, sec8, chainAfterGate, sec9, sec10].filter(function(s) { return s; }).join('\n');
 }
 
 function buildPrompt(pid) {
