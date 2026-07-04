@@ -1209,7 +1209,7 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
       <div class="conditional" id="metaCompIntel">
         <div class="field">
           <label class="field-label">Meta Ad Library Search URLs <span class="req">*</span></label>
-          <textarea id="f_meta_urls" rows="4" placeholder="Paste 4-8 Meta Ad Library URLs (one per line). Example:&#10;https://www.facebook.com/ads/library/?active_status=active&amp;country=CA&amp;q=furnace%20installation%20toronto&amp;search_type=keyword_unordered&amp;media_type=video"></textarea>
+          <textarea id="f_meta_urls" rows="4" placeholder="Optional — the run also discovers competitors natively for free. If you paste URLs, keep them BROAD: ONE keyword each, media_type=all (not video). Example:&#10;https://www.facebook.com/ads/library/?active_status=active&amp;country=CA&amp;q=furnace%20installation&amp;search_type=keyword_unordered&amp;media_type=all"></textarea>
           <div class="field-hint">Required for Step 2. Build URLs targeting the client's services + geography.</div>
         </div>
       </div>
@@ -1546,8 +1546,9 @@ If this block is empty or thin, that is NOT a blocker — you derive your own se
 Keyword searches in the Ad Library are NOISY: typically 50%+ of results are course-sellers, coaches, creators, and SaaS — not service competitors. And big keywords return 1,000-2,000 ads no one can read. NEVER deep-analyze a raw keyword scrape. Run this funnel:
 
 ### Phase A — Cast a wide, CHEAP net
-- Build the search set: every URL in \`<meta_ad_library_urls>\` PLUS 4-8 keyword-search URLs you derive YOURSELF from Step 1's services + niche + geography (service synonyms, "[service] for [niche]", "[service] [city]", the client's category label). Include country + active-status filters.
-- Put \`sort_data[mode]=total_impressions&sort_data[direction]=desc\` in every search URL — the scraper preserves URL order, so the FIRST ads returned are the highest-delivery ads in the market. The scrape order itself is a "who's doing great" ranking.
+- **DISCOVERY-FIRST via the native Meta Ads MCP (free — do this before any paid Apify scrape).** Use the Meta Ads \`ads_library_search\` tool with BROAD single-keyword terms from Step 1's services + niche (e.g. "furnace installation", "heat pump", "HVAC") + country, active-status ACTIVE. This returns the widest set of real advertisers (page_name + page_id) at zero cost and is the primary way to find who is in-market. Collect the unique advertiser page_ids here.
+- **Keep keyword search URLs BROAD, not narrow.** When you also build Apify keyword-search URLs from \`<meta_ad_library_urls>\` or your own derived list, use ONE strong keyword per URL and \`media_type=all\` — do NOT chain 3-4 words together and do NOT set \`media_type=video\` at the discovery stage. (A real test: \`q=furnace installation heat pump toronto&media_type=video\` returned ONE ad, while a single broad keyword returned 100+. Over-constrained URLs starve the whole decode.) Reserve \`media_type=video\` + \`view_all_page_id\` for Phase D, when you already know which advertiser's videos to pull.
+- You MAY add \`sort_data[mode]=total_impressions&sort_data[direction]=desc\` to bias ordering, but treat scrape order as a WEAK signal only — the public Ad Library does NOT expose impression counts for standard commercial ads in the US/Canada, so "first = best" is a rough heuristic, not a performance ranking. Corroborate "who's winning" with ad longevity + variant count, not order alone.
 - Scrape with a HARD CAP of 150-250 ads per search URL (use the actor's limit input). Cost calibration: ads cost ~$0.75 per 1,000 — the cap exists to protect ANALYSIS quality, not just credits. Do not scrape "ALL" on a keyword search, ever.
 
 ### Phase B — Collapse ads → ADVERTISERS, then kill mechanically (no judgment yet)
