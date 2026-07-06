@@ -6,6 +6,54 @@
 
 ---
 
+## 0. Session record — 2026-07-05/06 (reliability + accuracy + first real dogfood run)
+
+> Work on branch `claude/pending-scope-improvements-lv323n` (PR #2). Direction: make the
+> tool reliable + accurate for our OWN use (a month of real client runs), NOT commercialization.
+> **No client-confidential data is recorded here — the repo is public.**
+
+### Shipped
+- **Creative-phase restructure (reliability, the biggest fix).** `buildMasterPrompt` now SPLITS the
+  step chain and injects the Embedded Creative Audit Rubric + 90/100 gate + the single Pass-1 approval
+  **between Step 8 (script authoring) and the steps that consume the scripts (P9/P11/P10)** — instead of
+  appending them after the "END OF CHAIN" marker. This removes the old contradiction where the audit
+  gate could be skipped, the human paused twice, or three "final" documents emitted. Phase B image
+  upload + Pass 2 client doc still follow at the end. (Implementation: `stepBodies` returns `{pid,text}`
+  objects; `chainThroughGate`/`chainAfterGate` split at P8 (or P10 if P8 absent); return array places
+  the rubric/protocol/gate between the two halves.)
+- **Account-data-first benchmarks (accuracy).** P4/P5 now query our own connected accounts via Adzviser
+  (`list_workspace` + `retrieve_reporting_data`) for real CPL/CPM/CTR/CPA **before** web-guessing; web is
+  fallback + sanity-check; aggregate-only output (never another client's name/figures). Pre-flight probes
+  Adzviser for P4/P5 too.
+- **P2 discovery-first + broader search URLs (from the live run).** Use the FREE native Meta
+  `ads_library_search` for broad competitor discovery before any paid Apify scrape; keep keyword search
+  URLs broad (one keyword, `media_type=all`); reserve `media_type=video` + `view_all_page_id` for the
+  Phase-D deep scrape; temper the "impressions-sort = performance ranking" claim (the public Ad Library
+  does not expose impressions for US/CA commercial ads).
+
+### Dogfood live run — what we learned (validated with real MCPs, ~$0.03 Apify total)
+- **The pipeline works end-to-end.** Native discovery returned 100+ real in-market competitors; the Apify
+  page-scrape returned real structured competitor ad data (bodies, offers, formats) in seconds; the
+  account-first benchmark returned the client's real cost-per-lead.
+- **Real bug found & fixed:** a multi-keyword + `media_type=video` search URL returned **1 ad** vs. 100+
+  from native discovery → drove the P2 discovery-first fix above.
+- **The creative-audit gate works AS DESIGNED — and this is the key operating lesson.** Each script is
+  scored per-script; the auto-revise loop lifts scripts on strategy (ours all passed the competitive gate
+  using the real competitor decode); and **trace-or-stop correctly BLOCKS fabricating proof to reach 90.**
+  So the 90 gate does **not** force fabrication or generic scripts. When a strong, research-driven script
+  is capped below 90 by a **missing REAL proof asset** (a real install photo, star rating, license, or
+  warranty), the correct behavior is to **surface it flagged and request the real asset — never invent
+  one.** Practical implication: to consistently clear 90, the client must supply real proof points
+  (rating + review count, TSSA/HRAI license, years/installs, warranty) and a real creative photo.
+
+### Process lessons for future runs (operator + assistant)
+- A "test run" is not the deliverable. When asked to run it, run the chain **through to the audited
+  scripts** and stop at the Pass-1 human gate — don't halt at a plumbing check.
+- Never hand over scripts that haven't passed the scored audit + the auto-revise loop first.
+- Never suggest inventing proof (ratings/reviews) to lift a score — that violates trace-or-stop.
+
+---
+
 ## 1. What this session changed (all shipped + deployed)
 
 | Commit | Change |
