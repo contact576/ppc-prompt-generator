@@ -9640,6 +9640,11 @@ function buildMasterPrompt(f) {
   const maxAds = f.f_max_ads_per_url || '250';
   const qcAgentsOn = f.f_qc_agents_enabled !== 'no';
   const clientName = (f.f_client_name && f.f_client_name.trim()) || '[CLIENT NAME]';
+  // --- Learning loop: the shared "Brain" folder on Google Drive (see _Prompt Generator Brain).
+  // Every run READS benchmark-cache.json first (real targets) and APPENDS learnings at the end.
+  // Locked by folder ID so the run writes here even though the operator only selected the client folder.
+  const BRAIN_ID = (f.f_brain_folder_id && f.f_brain_folder_id.trim()) || '186o14Efv63ExoYYdg7Q-OYozu_jSQ-V5';
+  const BRAIN_NAME = '_Prompt Generator Brain';
   const outcomeLabel = (typeof describeSelection === 'function') ? describeSelection(stepList) : (stepList.length + ' steps');
   const hasScriptSteps = stepList.includes('p8') || stepList.includes('p10');
   const emitsClientDoc = stepList.includes('p8');
@@ -9894,6 +9899,12 @@ function buildMasterPrompt(f) {
     '',
     '## C. Spend ledger (enforce the cap, do not trust honor system)',
     'Open a running Apify spend tally at $0 and count EVERY Apify actor run against it — the Meta scrape, the Google scrape, AND each video transcription (the transcription actor bills too; do not leave it out). Before each run, estimate its cost (scrapes ≈ ads × ~$0.75/1000; transcription ≈ per-video actor rate) and add it; after each run, reconcile to the actual cost from the Apify run metadata. Print the running total after every run ("Apify spend: $X.XX / $' + budgetCap + '"). If the tally would cross $' + budgetCap + ', STOP per Operating Rule 1 — never let it silently exceed.',
+    '',
+    '## D. Brain read (learning loop — the tool gets smarter every run)',
+    'There is ONE shared memory folder on Google Drive, "' + BRAIN_NAME + '" (folder id `' + BRAIN_ID + '`), used by EVERY run for EVERY client. It is NOT the client folder — reach it directly by that id even though the operator only selected the client folder for this session.',
+    '- Open `benchmark-cache.json` from that folder and load it into working memory. It holds REAL CPL/CPM/CTR figures pulled from our own accounts on prior runs, keyed by {vertical, geo, platform, metric}.',
+    '- For this client\'s vertical + geo, if a fresh entry exists (updated within the last 180 days), treat its value as the **"Target CPL/CPM/CTR to beat"** downstream (Steps 4/5/6/7) INSTEAD of a web guess. Tag it `🧠 BRAIN BENCHMARK` so it is traceable. If no fresh entry matches, fall back to own-account query then web, exactly as before — and you will write what you find back at the end (Section below).',
+    '- If the Brain folder or file cannot be opened, note "🧠 Brain unavailable — proceeding without cache" and continue; never STOP a run over the Brain.',
     ''
   ].join('\n');
 
@@ -10095,7 +10106,38 @@ function buildMasterPrompt(f) {
     ''
   ].join('\n');
 
-  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, secPreflight, sec6, secRubric, sec7, sec8, chainAfterGate, sec9, sec10].filter(function(s) { return s; }).join('\n');
+  // --- Section 11: Brain write (EMIT — the last thing every run does) ---
+  // Appends real benchmarks + a hurdle retrospective to the shared Brain folder so the
+  // NEXT run (any client, any teammate) is smarter. Never writes client-confidential data.
+  const secBrain = [
+    '═══════════════════════════════════════',
+    '# FINAL STEP — BRAIN WRITE (do this LAST, after the deliverable, every run)',
+    '═══════════════════════════════════════',
+    '',
+    'Before you finish, update the shared memory folder "' + BRAIN_NAME + '" (folder id `' + BRAIN_ID + '`) — the same folder you read in STEP 0 Section D. This is what makes the tool compound. Reach it by id; it is NOT the client folder. Two writes:',
+    '',
+    '## 1. benchmark-cache.json — upsert the REAL numbers you observed',
+    'For every own-account benchmark this run actually pulled (Steps 4/5/6/7 via Adzviser/Meta/Google), add or update an entry in the `benchmarks` array. Read the file, modify the JSON in memory, write the whole file back (valid JSON). Each entry:',
+    '```json',
+    '{ "vertical": "<e.g. HVAC>", "geo": "<e.g. GTA>", "platform": "meta|google", "metric": "CPL|CPM|CTR", "value": <number>, "currency": "CAD", "source": "own-account", "sample_note": "<e.g. 90d, 3 accounts>", "updated": "<today YYYY-MM-DD>", "run": "<client-first-name+date, e.g. ecocare-2026-07-09>" }',
+    '```',
+    'Rules: aggregate only — **no other client\'s name, no raw account IDs**. If an entry for the same {vertical, geo, platform, metric} exists, overwrite it with the newer figure. If this run pulled no own-account numbers, skip this write.',
+    '',
+    '## 2. evolution-log.md — append one retrospective entry',
+    'Append (do not overwrite) one entry at the end of the file, using its documented format:',
+    '```',
+    '### <today YYYY-MM-DD> · run <client-first-name+date> · ' + (stepList.filter(function(p){return p==="p2"||p==="p6"||p==="p10";}).length ? 'meta' : '') + '/' + (stepList.filter(function(p){return p==="p3"||p==="p7"||p==="p11";}).length ? 'google' : '') + ' · <vertical/geo>',
+    '- HURDLES: <what broke / stalled / was ambiguous / came back empty / capped a creative score> (or "none")',
+    '- MCP: <any connector that failed, was slow, or returned too little> (or "all healthy")',
+    '- BENCHMARKS: <which {vertical/geo/metric} figures you wrote to benchmark-cache.json> (or "none pulled")',
+    '- CREATIVE GATE: <scripts that passed 90+; and WHY any were capped — e.g. "missing real proof asset: rating/license"> (or "n/a")',
+    '- FIX IDEAS: <concrete prompt/tool changes this run suggests> (or "none")',
+    '```',
+    'Keep it factual and free of client-confidential data (no client names beyond the short run tag, no raw account IDs, no verbatim proprietary strategy). If you cannot reach the Brain folder, note "🧠 Brain write skipped — folder unavailable" in your final summary and finish normally; never fail the run over the Brain write.',
+    ''
+  ].join('\n');
+
+  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, secPreflight, sec6, secRubric, sec7, sec8, chainAfterGate, sec9, sec10, secBrain].filter(function(s) { return s; }).join('\n');
 }
 
 function buildPrompt(pid) {

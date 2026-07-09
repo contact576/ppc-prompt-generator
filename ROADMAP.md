@@ -6,6 +6,41 @@
 
 ---
 
+## 0b. Session record — 2026-07-09 (learning loop wired — the "Brain")
+
+> Lightweight version of the Tier-1 learning loop, built after the owner confirmed the storage model.
+> **No client-confidential data is recorded here — the repo is public.**
+
+**What & why.** The orchestrator prompt is pasted into a *separate, sealed* Claude session (Drive + ad
+connectors, no repo access), so nothing it learns can travel back on its own. The only shared, persistent
+surface both the run session and any future session can reach is **Google Drive**. So Drive is the memory.
+
+**Storage model (decided with owner).** One master Drive folder → a subfolder per client (operator selects
+it per run, deliverables land there) **+ one fixed shared "Brain" folder** that every run reads/writes
+regardless of which client folder was selected. The Drive connector sees the whole Drive, so "selecting a
+client folder" is only an instruction about where deliverables go — the Brain is reached directly by its
+folder **ID** (not name, to avoid collisions). Recommended (not yet done): move the master folder to a
+Google **Shared Drive** so team access survives any one person's account.
+
+**Created in Drive** (`_Prompt Generator Brain`, id `186o14Efv63ExoYYdg7Q-OYozu_jSQ-V5`, inside the owner's
+master folder): `benchmark-cache.json` (real CPL/CPM/CTR by vertical+geo+platform), `evolution-log.md`
+(per-run hurdle retrospective), `README.md` (team). All seeded empty of data.
+
+**Wired into `buildMasterPrompt`** (id overridable via `f.f_brain_folder_id`):
+- **ABSORB** — STEP 0 pre-flight gains **Section D "Brain read"**: open `benchmark-cache.json` first; if a
+  fresh (<180d) entry matches the client vertical+geo, use it as the real "target to beat" (tagged
+  `🧠 BRAIN BENCHMARK`) instead of a web guess. Brain unavailable → note + continue, never STOP.
+- **EMIT** — new **FINAL STEP "Brain write"** (last section, after Pass 2): upsert the real own-account
+  numbers observed this run into `benchmark-cache.json`, and append one retrospective entry to
+  `evolution-log.md`. Aggregate only — no client names / no raw account IDs. Brain unreachable → skip + finish.
+- Verified: backtick parity 0, braces 1805/1805, inline JS parses, master regenerates ~94K tokens with both
+  Brain sections present and the write as the final section.
+
+**Not yet built (next):** the weekly **evolve-job** — a scheduled Claude Code session on THIS repo that reads
+`evolution-log.md` from the Brain, clusters recurring hurdles, and opens a **draft PR** improving the prompts
+(owner-gated merge, not auto-merge). Also recommended: a proof-asset intake section so creative scripts clear
+the 90 gate on the first pass (real rating/license/#installs/warranty/photo collected up front, never fabricated).
+
 ## 0. Session record — 2026-07-05/06 (reliability + accuracy + first real dogfood run)
 
 > Work on branch `claude/pending-scope-improvements-lv323n` (PR #2). Direction: make the
