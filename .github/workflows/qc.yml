@@ -1,0 +1,51 @@
+name: QC (structural integrity)
+
+# Headless gate for the single-file app. Catches the historical bug classes
+# 2 (placeholder/JS breakage) and 4 (encoding) before a push reaches Vercel:
+# backtick parity, brace balance, and JS parse of the inline <script>.
+# This is the automatable half of the CLAUDE.md "verify before deploying" ritual.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Structural checks on index.html
+        run: |
+          node -e '
+            const fs = require("fs");
+            const c = fs.readFileSync("index.html", "utf8");
+            const errors = [];
+
+            // 1. Brace balance across the whole file
+            const open = (c.match(/\{/g) || []).length;
+            const close = (c.match(/\}/g) || []).length;
+            if (open !== close) errors.push("brace imbalance: " + open + " { vs " + close + " }");
+
+            // 2. Extract the single inline <script> (no src attribute)
+            const m = c.match(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/i);
+            if (!m) { errors.push("could not locate inline <script>"); }
+            else {
+              const s = m[1];
+              // 3. Backtick parity inside the inline script
+              const bt = (s.match(/`/g) || []).length;
+              const esc = (s.match(/\\`/g) || []).length;
+              if ((bt - esc) % 2 !== 0) errors.push("backtick parity odd: " + bt + " backticks, " + esc + " escaped");
+              // 4. JS parse
+              fs.writeFileSync("/tmp/inline.js", s);
+            }
+
+            if (errors.length) { console.error("QC FAILED:\n - " + errors.join("\n - ")); process.exit(1); }
+            console.log("QC structural checks passed (braces " + open + "/" + close + ").");
+          '
+      - name: JS parse of inline script
+        run: node --check /tmp/inline.js && echo "inline script parses OK"

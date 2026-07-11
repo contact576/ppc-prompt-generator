@@ -6,6 +6,129 @@
 
 ---
 
+## 0c. Session record — 2026-07-11 (pre-launch QC + fast-follow batch)
+
+> Full start-to-end QC before merging to main for team use. 3 read-only sub-agents (architecture,
+> prompt-chain/domain, beautifier/learning-loop) + live Apify actor tests. No client data recorded.
+
+**Scores:** Architecture & Reliability 88 · Prompt Chain & Domain Quality 88 · Beautifier + Rendering 83 ·
+External Data Plumbing (Apify) 82 (post-fix) · **overall ~85/100.** Verdict: client-grade; cleared to merge
+after the launch-blocker fix.
+
+**Live actor tests (2026-07-11):**
+- `curious_coder/facebook-ads-library-scraper` — healthy (99.8% success, not deprecated). Real scrape returned
+  video ads with populated `snapshot.videos[].video_hd_url` (snake_case).
+- **Launch-blocker found + fixed** (`b560ae8`): P2/Step 7A read camelCase `videoHdUrl`; actor returns snake_case
+  `video_hd_url` → transcription would silently skip. Corrected both references + the actor-call example.
+- `donjuan_mime/audio-video-to-text` — the $5/mo rental; live but audio-only, low-adoption, accepts only
+  `{source_url, model}` (the `language` hint was being ignored). No cheap dedicated *visual* decoder exists.
+
+**Fast-follow batch shipped this pass:**
+- **Transcription upgraded** to a robust direct-URL + auto-language primary (`hgservices/speech-to-text` /
+  `truefetch/video-to-text`), $5 actor demoted to fallback.
+- **Native visual decode** added to Step 7A — orchestrator reads on-screen text / visual hook / format /
+  visual proof from `video_preview_image_url` + sampled frames using its own multimodal vision, fused with the
+  transcript. (This is the "visual decoder" — free, better than any $5 audio-only actor.)
+- **Brain hardening:** concurrency-safe write (re-read + merge before write) + **sample-size gating** (thin run
+  can't clobber a well-sampled median); `sample_size`/`window_days` added to schema.
+- **evolution-log read-back** at STEP 0 (loop now learns process, not just numbers) + benchmark re-validation
+  (>20% live-vs-cache drift → use live + refresh).
+- **Team runtime standard = Claude Code** — now the default `f_runtime` (Chat demoted to "legacy").
+- **CI gate** (`.github/workflows/qc.yml`) — brace/backtick/`node --check` on every push/PR.
+- CLAUDE.md documents the Brain, folder-restriction requirement, and verified actor facts.
+- Verified: backtick parity 0, braces 1807/1807, inline JS parses, master regenerates ~94K tokens, all
+  learning-loop wiring checks pass.
+
+**Deliberately deferred (routed to the weekly evolve-job / follow-up draft PR — cannot be render-tested headlessly, or are roadmap-scale):**
+- Beautifier `renderExecSummary` / `renderNext` hardening (pass leftover content through instead of silent
+  drop) — Low severity, needs a live browser render smoke test before shipping.
+- **Creative-outcome → score feedback loop** (shipped creative → realized CPL/lead-quality feeding the 90-gate) —
+  the agency's flagged #1 gap; still open, roadmap-scale.
+- P5 static IS-target refinement + P4 expert-roster rebalance toward local-lead-gen — Low.
+
+## 0b. Session record — 2026-07-09 (learning loop wired — the "Brain")
+
+> Lightweight version of the Tier-1 learning loop, built after the owner confirmed the storage model.
+> **No client-confidential data is recorded here — the repo is public.**
+
+**What & why.** The orchestrator prompt is pasted into a *separate, sealed* Claude session (Drive + ad
+connectors, no repo access), so nothing it learns can travel back on its own. The only shared, persistent
+surface both the run session and any future session can reach is **Google Drive**. So Drive is the memory.
+
+**Storage model (decided with owner).** One master Drive folder → a subfolder per client (operator selects
+it per run, deliverables land there) **+ one fixed shared "Brain" folder** that every run reads/writes
+regardless of which client folder was selected. The Drive connector sees the whole Drive, so "selecting a
+client folder" is only an instruction about where deliverables go — the Brain is reached directly by its
+folder **ID** (not name, to avoid collisions). Recommended (not yet done): move the master folder to a
+Google **Shared Drive** so team access survives any one person's account.
+
+**Created in Drive** (`_Prompt Generator Brain`, id `186o14Efv63ExoYYdg7Q-OYozu_jSQ-V5`, inside the owner's
+master folder): `benchmark-cache.json` (real CPL/CPM/CTR by vertical+geo+platform), `evolution-log.md`
+(per-run hurdle retrospective), `README.md` (team). All seeded empty of data.
+
+**Wired into `buildMasterPrompt`** (id overridable via `f.f_brain_folder_id`):
+- **ABSORB** — STEP 0 pre-flight gains **Section D "Brain read"**: open `benchmark-cache.json` first; if a
+  fresh (<180d) entry matches the client vertical+geo, use it as the real "target to beat" (tagged
+  `🧠 BRAIN BENCHMARK`) instead of a web guess. Brain unavailable → note + continue, never STOP.
+- **EMIT** — new **FINAL STEP "Brain write"** (last section, after Pass 2): upsert the real own-account
+  numbers observed this run into `benchmark-cache.json`, and append one retrospective entry to
+  `evolution-log.md`. Aggregate only — no client names / no raw account IDs. Brain unreachable → skip + finish.
+- Verified: backtick parity 0, braces 1805/1805, inline JS parses, master regenerates ~94K tokens with both
+  Brain sections present and the write as the final section.
+
+**Not yet built (next):** the weekly **evolve-job** — a scheduled Claude Code session on THIS repo that reads
+`evolution-log.md` from the Brain, clusters recurring hurdles, and opens a **draft PR** improving the prompts
+(owner-gated merge, not auto-merge). Also recommended: a proof-asset intake section so creative scripts clear
+the 90 gate on the first pass (real rating/license/#installs/warranty/photo collected up front, never fabricated).
+
+## 0. Session record — 2026-07-05/06 (reliability + accuracy + first real dogfood run)
+
+> Work on branch `claude/pending-scope-improvements-lv323n` (PR #2). Direction: make the
+> tool reliable + accurate for our OWN use (a month of real client runs), NOT commercialization.
+> **No client-confidential data is recorded here — the repo is public.**
+
+### Shipped
+- **Creative-phase restructure (reliability, the biggest fix).** `buildMasterPrompt` now SPLITS the
+  step chain and injects the Embedded Creative Audit Rubric + 90/100 gate + the single Pass-1 approval
+  **between Step 8 (script authoring) and the steps that consume the scripts (P9/P11/P10)** — instead of
+  appending them after the "END OF CHAIN" marker. This removes the old contradiction where the audit
+  gate could be skipped, the human paused twice, or three "final" documents emitted. Phase B image
+  upload + Pass 2 client doc still follow at the end. (Implementation: `stepBodies` returns `{pid,text}`
+  objects; `chainThroughGate`/`chainAfterGate` split at P8 (or P10 if P8 absent); return array places
+  the rubric/protocol/gate between the two halves.)
+- **Account-data-first benchmarks (accuracy).** P4/P5 now query our own connected accounts via Adzviser
+  (`list_workspace` + `retrieve_reporting_data`) for real CPL/CPM/CTR/CPA **before** web-guessing; web is
+  fallback + sanity-check; aggregate-only output (never another client's name/figures). Pre-flight probes
+  Adzviser for P4/P5 too.
+- **P2 discovery-first + broader search URLs (from the live run).** Use the FREE native Meta
+  `ads_library_search` for broad competitor discovery before any paid Apify scrape; keep keyword search
+  URLs broad (one keyword, `media_type=all`); reserve `media_type=video` + `view_all_page_id` for the
+  Phase-D deep scrape; temper the "impressions-sort = performance ranking" claim (the public Ad Library
+  does not expose impressions for US/CA commercial ads).
+
+### Dogfood live run — what we learned (validated with real MCPs, ~$0.03 Apify total)
+- **The pipeline works end-to-end.** Native discovery returned 100+ real in-market competitors; the Apify
+  page-scrape returned real structured competitor ad data (bodies, offers, formats) in seconds; the
+  account-first benchmark returned the client's real cost-per-lead.
+- **Real bug found & fixed:** a multi-keyword + `media_type=video` search URL returned **1 ad** vs. 100+
+  from native discovery → drove the P2 discovery-first fix above.
+- **The creative-audit gate works AS DESIGNED — and this is the key operating lesson.** Each script is
+  scored per-script; the auto-revise loop lifts scripts on strategy (ours all passed the competitive gate
+  using the real competitor decode); and **trace-or-stop correctly BLOCKS fabricating proof to reach 90.**
+  So the 90 gate does **not** force fabrication or generic scripts. When a strong, research-driven script
+  is capped below 90 by a **missing REAL proof asset** (a real install photo, star rating, license, or
+  warranty), the correct behavior is to **surface it flagged and request the real asset — never invent
+  one.** Practical implication: to consistently clear 90, the client must supply real proof points
+  (rating + review count, TSSA/HRAI license, years/installs, warranty) and a real creative photo.
+
+### Process lessons for future runs (operator + assistant)
+- A "test run" is not the deliverable. When asked to run it, run the chain **through to the audited
+  scripts** and stop at the Pass-1 human gate — don't halt at a plumbing check.
+- Never hand over scripts that haven't passed the scored audit + the auto-revise loop first.
+- Never suggest inventing proof (ratings/reviews) to lift a score — that violates trace-or-stop.
+
+---
+
 ## 1. What this session changed (all shipped + deployed)
 
 | Commit | Change |
@@ -90,21 +213,33 @@ This is the "what could be better" list. Nothing here is started; each needs a g
   reports the takeaway, with no knowledge of the rubric. Tests real stopping power. *(medium)*
 - **Visual-hook decoding** (owner explicitly wanted this) — Step 7A only transcribes audio;
   add Gemini/keyframe vision to decode the competitor's VISUAL first second. *(medium)*
-- **Multiple video story archetypes** (PAS / Demo / Listicle / Founder-POV) instead of one
-  fixed 8-10 panel arc, with ≥2 per ad set — mirrors the static archetype variety rule.
+- ✅ **SHIPPED (2026-07-03)** — **Multiple video story archetypes** (PAS / Demo / Listicle /
+  Founder-POV / Testimonial-UGC) instead of one fixed 8-10 panel arc. P8 SCRIPT DERIVATION RULES
+  gained a "video declares a STORY archetype" gate + a per-ad-set variety gate (≥2 videos ⇒ ≥2
+  different archetypes, mirroring the static rule); the storyboard derivation now branches its
+  panel arc on the declared archetype; P10 carries the archetype into the editor handoff; both
+  Pass 1 and P10 checklists validate the variety rule.
 
 ### Tier 3 — Tooling & currency
-- **Whisper is pinned to `base`** (lowest accuracy) on the chain's highest-value intel →
-  bump to `small`/`medium` + `en`/`fr-CA` language hint. *(quick)*
-- **Meta 2026 currency** — P4/P6 still frame strategy as "Broad vs Advantage+ vs Lookalike"
-  (a 2023 model). Re-baseline to the Advantage+-default / Andromeda creative-volume paradigm.
+- ✅ **SHIPPED (2026-07-03)** — **Whisper bumped `base` → `small` + language hint.** P2 Step 7A
+  transcription now requests `model: "small"` with a `language` hint derived from `[GEOGRAPHY]`
+  (`en`/`fr`…), with a graceful fallback to `base` if `small` is unavailable. Better word-error
+  rate on the chain's highest-value intel (competitor scripts) with negligible added runtime.
+- ✅ **SHIPPED (2026-07-03)** — **Meta 2026 currency re-baseline.** P4's audience sub-section and
+  P6's audience-audit section were reframed from the 2023 "Broad vs Advantage+ vs Lookalike" menu
+  to the **Advantage+-default → when-to-override** model, plus a **creative-volume ("Andromeda")**
+  angle (variety is the optimization lever, not audience slicing). P6 now audits A+ adoption and
+  creative-volume-per-ad-set as findings.
 - **Programmatic image generation** (image-gen MCP) with an in-loop render → re-audit →
   regenerate cycle, replacing the manual "paste into ChatGPT image gen" handoff.
 - **Automated A/B hook-variant generation** off the existing auditor loop (3 hooks/script).
 - **Higgsfield** video/avatar generation + virality predictor wired to the already-collected
   UGC-production-mode intake field (currently collected then ignored).
-- **P3 (Google competitor intel) depth** — add Auction Insights / Search Impression Share +
-  branded-term defense + competitor-derived negative keywords (P2 is much deeper than P3).
+- ✅ **SHIPPED (2026-07-03)** — **P3 (Google competitor intel) depth.** Added Source 4 (client's
+  own-account **Auction Insights / Impression Share**, conditional on an existing account, with a
+  budget-vs-rank loss read), **branded-term defense** (poaching check + client brand-defense check),
+  and **competitor-derived negative keywords** (10–20 grounded in the excluded/irrelevant ads).
+  New output sections 12–14 + checklist items. Brings P3 toward P2's depth.
 - **Voice-of-customer mining** — scrape review corpora/forums for the client's real pain
   language and feed it verbatim into creative (serves the 1-second rule directly).
 

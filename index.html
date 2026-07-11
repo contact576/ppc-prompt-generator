@@ -701,16 +701,16 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </div>
         <div class="prompt-mode-options">
           <label class="prompt-mode-option">
-            <input type="radio" name="f_runtime" id="f_runtime_chat" value="claude-chat" onchange="updateRuntimeUI()" checked />
+            <input type="radio" name="f_runtime" id="f_runtime_chat" value="claude-chat" onchange="updateRuntimeUI()" />
             <div>
-              <div class="prompt-mode-title">Claude Chat <span class="prompt-mode-default">current</span></div>
+              <div class="prompt-mode-title">Claude Chat <span class="prompt-mode-default">legacy</span></div>
               <div class="prompt-mode-desc">Per-step copy/paste into a claude.ai chat. 9-11 paste points. Familiar workflow.</div>
             </div>
           </label>
           <label class="prompt-mode-option">
-            <input type="radio" name="f_runtime" id="f_runtime_code" value="claude-code" onchange="updateRuntimeUI()" />
+            <input type="radio" name="f_runtime" id="f_runtime_code" value="claude-code" onchange="updateRuntimeUI()" checked />
             <div>
-              <div class="prompt-mode-title">Claude Code <span class="prompt-mode-default">orchestrated</span></div>
+              <div class="prompt-mode-title">Claude Code <span class="prompt-mode-default">team standard</span></div>
               <div class="prompt-mode-desc">ONE master prompt → Claude Code session. Sub-agents QC every step + creative auditor scores scripts &ge;90/100 before strategist sees them.</div>
             </div>
           </label>
@@ -1209,7 +1209,7 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
       <div class="conditional" id="metaCompIntel">
         <div class="field">
           <label class="field-label">Meta Ad Library Search URLs <span class="req">*</span></label>
-          <textarea id="f_meta_urls" rows="4" placeholder="Paste 4-8 Meta Ad Library URLs (one per line). Example:&#10;https://www.facebook.com/ads/library/?active_status=active&amp;country=CA&amp;q=furnace%20installation%20toronto&amp;search_type=keyword_unordered&amp;media_type=video"></textarea>
+          <textarea id="f_meta_urls" rows="4" placeholder="Optional — the run also discovers competitors natively for free. If you paste URLs, keep them BROAD: ONE keyword each, media_type=all (not video). Example:&#10;https://www.facebook.com/ads/library/?active_status=active&amp;country=CA&amp;q=furnace%20installation&amp;search_type=keyword_unordered&amp;media_type=all"></textarea>
           <div class="field-hint">Required for Step 2. Build URLs targeting the client's services + geography.</div>
         </div>
       </div>
@@ -1546,8 +1546,9 @@ If this block is empty or thin, that is NOT a blocker — you derive your own se
 Keyword searches in the Ad Library are NOISY: typically 50%+ of results are course-sellers, coaches, creators, and SaaS — not service competitors. And big keywords return 1,000-2,000 ads no one can read. NEVER deep-analyze a raw keyword scrape. Run this funnel:
 
 ### Phase A — Cast a wide, CHEAP net
-- Build the search set: every URL in \`<meta_ad_library_urls>\` PLUS 4-8 keyword-search URLs you derive YOURSELF from Step 1's services + niche + geography (service synonyms, "[service] for [niche]", "[service] [city]", the client's category label). Include country + active-status filters.
-- Put \`sort_data[mode]=total_impressions&sort_data[direction]=desc\` in every search URL — the scraper preserves URL order, so the FIRST ads returned are the highest-delivery ads in the market. The scrape order itself is a "who's doing great" ranking.
+- **DISCOVERY-FIRST via the native Meta Ads MCP (free — do this before any paid Apify scrape).** Use the Meta Ads \`ads_library_search\` tool with BROAD single-keyword terms from Step 1's services + niche (e.g. "furnace installation", "heat pump", "HVAC") + country, active-status ACTIVE. This returns the widest set of real advertisers (page_name + page_id) at zero cost and is the primary way to find who is in-market. Collect the unique advertiser page_ids here.
+- **Keep keyword search URLs BROAD, not narrow.** When you also build Apify keyword-search URLs from \`<meta_ad_library_urls>\` or your own derived list, use ONE strong keyword per URL and \`media_type=all\` — do NOT chain 3-4 words together and do NOT set \`media_type=video\` at the discovery stage. (A real test: \`q=furnace installation heat pump toronto&media_type=video\` returned ONE ad, while a single broad keyword returned 100+. Over-constrained URLs starve the whole decode.) Reserve \`media_type=video\` + \`view_all_page_id\` for Phase D, when you already know which advertiser's videos to pull.
+- You MAY add \`sort_data[mode]=total_impressions&sort_data[direction]=desc\` to bias ordering, but treat scrape order as a WEAK signal only — the public Ad Library does NOT expose impression counts for standard commercial ads in the US/Canada, so "first = best" is a rough heuristic, not a performance ranking. Corroborate "who's winning" with ad longevity + variant count, not order alone.
 - Scrape with a HARD CAP of 150-250 ads per search URL (use the actor's limit input). Cost calibration: ads cost ~$0.75 per 1,000 — the cap exists to protect ANALYSIS quality, not just credits. Do not scrape "ALL" on a keyword search, ever.
 
 ### Phase B — Collapse ads → ADVERTISERS, then kill mechanically (no judgment yet)
@@ -1572,7 +1573,7 @@ For each EXACT competitor, scrape their FULL ad inventory via \`view_all_page_id
 
 **Field capture (mandatory — these power Steps 5F, 7 and 7A):** for every kept ad, retain from the scrape output:
 - \`ad_archive_id\`, \`page_id\`, \`page_name\`, start date / days active
-- \`snapshot.videos[]\` — the video CDN URLs (\`videoHdUrl\` / \`videoSdUrl\`) → required for Step 7A transcription
+- \`snapshot.videos[]\` — the video CDN URLs (\`video_hd_url\` / \`video_sd_url\`, snake_case in the actor output) → required for Step 7A transcription
 - \`snapshot.images[]\`
 - \`snapshot.linkUrl\`, \`snapshot.caption\` (display domain), \`snapshot.ctaText\`, \`snapshot.ctaType\` → the ad's destination assets (landing pages, Calendly/booking links — the "additional assets" shown in Ad Details)
 - Per-card links + text if the ad is a carousel
@@ -1754,8 +1755,8 @@ Then at the end, a clean copy-paste block of just the permalinks:
 
 The permalinks above are for human review. The actual scripts get extracted by YOU, right now. Captions cover maybe 20-30% of what a video ad communicates — the spoken script is the rest.
 
-1. **Source the video files:** from the Step 7 shortlist, take each ad's video CDN URL from the scrape data (\`snapshot.videos[].videoHdUrl\`, fall back to \`videoSdUrl\`). These signed URLs expire within hours — transcription MUST happen in this same session, immediately after the scrape. (This is the one legitimate internal use of CDN URLs; they still never appear in the report.)
-2. **Transcribe up to 10 videos (hard cap 15):** call the Apify transcription actor \`donjuan_mime/audio-video-to-text\` through the same Apify connection used for the scrape, input: \`{ "model": "base", "source_url": "<the videoHdUrl>" }\`. If that actor is unavailable, search the Apify store for an equivalent "video to text" / Whisper actor and use it. If a video fails to transcribe, write "TRANSCRIPT UNAVAILABLE — [reason]" and continue. NEVER invent a transcript.
+1. **Source the video files:** from the Step 7 shortlist, take each ad's video CDN URL from the scrape data (\`snapshot.videos[].video_hd_url\`, fall back to \`snapshot.videos[].video_sd_url\` — these keys are snake_case in the \`curious_coder/facebook-ads-library-scraper\` output; do NOT look for camelCase \`videoHdUrl\`). These signed URLs expire within hours — transcription MUST happen in this same session, immediately after the scrape. (This is the one legitimate internal use of CDN URLs; they still never appear in the report.)
+2. **Transcribe up to 10 videos (hard cap 15):** call an Apify transcription actor through the same Apify connection used for the scrape, passing the direct \`video_hd_url\` as the source. Prefer a robust, high-success actor that takes a DIRECT media URL and AUTO-DETECTS language — good current choices: \`hgservices/speech-to-text\` (Deepgram, 99%+ success; input \`{ "mediaUrl": "<video_hd_url>", "language": "auto", "smartFormat": true }\`) or \`truefetch/video-to-text\` (auto language detection; input \`{ "video_url": "<video_hd_url>" }\`). Auto language detection matters because GTA / Montréal advertiser sets are frequently mixed-language and a single wrong hint raises word-error rate on the chain's highest-value intel. **Fallbacks, in order:** \`donjuan_mime/audio-video-to-text\` (input \`{ "model": "small", "source_url": "<video_hd_url>" }\` — audio-only, no language field, low-adoption so treat as backup); then search the Apify store for any equivalent "video to text" / Whisper actor. Where the actor exposes a Whisper model choice, use \`small\` or better — \`base\` mis-hears brand names, offers, and numbers. If a video fails to transcribe, write "TRANSCRIPT UNAVAILABLE — [reason]" and continue. NEVER invent a transcript.
 3. **Per transcribed video, output:**
 
 \`\`\`
@@ -1768,7 +1769,7 @@ FULL TRANSCRIPT: [cleaned transcript]
 \`\`\`
 
 4. **Roll-up:** a spoken-hook pattern table (same taxonomy as Step 5A) with frequency + average days active, then name the 1-2 most-proven script STRUCTURES in this market (the beat sequences the longest-running videos share).
-5. **Optional visual layer:** if a video-analysis tool is connected in this chat (e.g., Higgsfield video analysis / virality predictor), run the top 3-5 videos through it and record hook-strength / retention notes. If no such tool is connected, skip silently — this never blocks.
+5. **Visual decode (DO THIS — you are multimodal):** the spoken script is only ~half of a video ad; the visuals carry the rest. For the top 5-8 video ads, decode the VISUALS using your own vision — no paid actor needed. Use each ad's \`snapshot.videos[].video_preview_image_url\` (the keyframe the scrape already returns) and, where you can fetch it, sample 2-3 frames from the \`video_hd_url\`. Record: (a) **ON-SCREEN TEXT** verbatim — burned-in hook text, offer callouts, captions (these often differ from BOTH the spoken words and the ad copy); (b) **VISUAL HOOK** — what fills the first 1-2s (face/UGC, product demo, text card, pattern interrupt); (c) **SETTING & FORMAT** — talking-head vs b-roll vs screen-record vs testimonial; (d) **VISUAL PROOF** shown on screen (badges, star ratings, before/after, branded trucks/uniforms). Fuse this with the FULL TRANSCRIPT so the decode captures what the ad SHOWS, not only what it SAYS. If a dedicated video-analysis MCP is also connected (e.g. Higgsfield virality predictor), layer its hook-strength / retention read on top; if not, skip only that extra layer silently — your own visual read is the baseline and never blocks.
 
 This is the single highest-value creative intelligence in the chain — Step 10's video concepts MUST build on these spoken hooks and structures, not just captions.
 
@@ -2062,6 +2063,16 @@ For every Tier 1 and Tier 2 competitor identified, fetch their paid-traffic land
 - Form fields (if applicable)
 - How the offer/promotion is surfaced
 
+## Source 4: Client's Own Google Ads Account — Auction Insights (CONDITIONAL — existing client only)
+If [CLIENT NAME] has an existing/connected Google Ads account (Adzviser \`google_ads\` or the connected Google Ads MCP), pull the **Auction Insights** report for the client's top Search campaigns over the last 30–90 days. This is the ONE competitive signal you cannot scrape — it's who [CLIENT NAME] *actually* collides with in the live auction, straight from Google:
+- Competing domains and their **Impression Share** overlap
+- **Overlap Rate**, **Position Above Rate**, **Outranking Share**, **Top-of-Page Rate**
+- The client's own **Search Impression Share**, **Search Lost IS (Budget)**, **Search Lost IS (Rank)**
+
+Cross-reference the Auction Insights domains against your scraped competitor set — a domain that shows high overlap here but was NOT in your scraped list is a competitor you missed; run it back through the 4-criteria filter and add it.
+
+If the client is NEW (no account) or the account isn't connected, state "N/A — no Google Ads account access (new client); competitive picture is scrape-only" and continue. Do NOT fabricate Auction Insights numbers — they exist only inside a real account.
+
 ---
 
 # COMPETITOR DISCOVERY PROTOCOL (CRITICAL)
@@ -2223,6 +2234,41 @@ Every unique offer found across competitors:
 
 Identify: what's the DOMINANT offer in this market (what customers expect to see).
 
+### H) Auction Insights & Impression Share (existing client only — from Source 4)
+If Source 4 returned data, build:
+
+| Competing Domain | Impression Share | Overlap Rate | Position Above Rate | Outranking Share |
+|---|---|---|---|---|
+| [domain] | X% | X% | X% | X% |
+
+Then state the client's own auction health:
+- Search Impression Share: X%  (healthy target: 60%+)
+- Search Lost IS (Budget): X%  → if high, the client is capped by budget, not losing on quality
+- Search Lost IS (Rank): X%  → if high, the problem is Ad Rank (bids / Quality Score / relevance), not budget
+
+One-line read: is [CLIENT NAME] losing the auction primarily to **budget** or to **rank**? That single distinction changes the whole Google strategy. If Source 4 was N/A, write "N/A — no account access" and skip the table.
+
+### I) Branded-Term Defense
+Two questions, answered from the scraped Search sponsored results:
+1. **Is anyone poaching [CLIENT NAME]'s brand?** Did any competitor ad appear when you searched the client's own brand name / brand + service? List each poacher and the ad they ran. Brand poaching is a direct, cheap threat that demands a defensive brand campaign.
+2. **Is [CLIENT NAME] defending its own brand terms?** (existing client, from Source 4 / account) — is there an active branded campaign? If competitors bid on the client's brand and the client runs no brand defense, flag it as an **urgent, low-cost win**.
+
+| Brand Search Tested | Competitor Poaching? | Who | Client Defending? |
+|---|---|---|---|
+| "[CLIENT NAME]" | Yes / No | [competitor] | Yes / No / N/A (new) |
+| "[CLIENT NAME] [service]" | Yes / No | [competitor] | Yes / No / N/A (new) |
+
+### J) Competitor-Derived Negative Keywords
+From the ads you EXCLUDED in Step 4 (hiring, B2B, informational) and from the irrelevant search results you saw, derive a starter negative-keyword list — the terms that pull the wrong intent in THIS vertical. This saves [CLIENT NAME] real spend on day one.
+
+| Negative Keyword | Why (what wrong intent it blocks) | Match Type |
+|---|---|---|
+| jobs / careers / hiring | recruitment traffic, not customers | phrase |
+| DIY / how to / free | non-buyers researching | phrase |
+| [vertical-specific, e.g. "wholesale", "parts", "used"] | [reason] | [broad/phrase/exact] |
+
+Aim for 10–20 real negatives grounded in what you actually observed — not a generic template list.
+
 ## Step 7 — Keyword Gap Analysis
 
 Output a Keyword Opportunity Map showing:
@@ -2331,12 +2377,21 @@ For each:
 ## 11. KEYWORD OPPORTUNITY MAP
 Table from Step 7 with 🟢🟡🔴 ratings.
 
-## 12. 🎯 THE GAP — WHAT [CLIENT NAME] SHOULD DO
+## 12. AUCTION INSIGHTS & IMPRESSION SHARE
+Table + budget-vs-rank read from Step 6H. If new client: "N/A — no account access."
 
-### 12A. Immediate Opportunities
-### 12B. Competitive Gaps (pain points no one addresses)
-### 12C. What to Avoid
-### 12D. Recommended First 3 Google Ads Angles for [CLIENT NAME]
+## 13. BRANDED-TERM DEFENSE
+Poaching + defense tables from Step 6I, with the urgent-win flag if applicable.
+
+## 14. COMPETITOR-DERIVED NEGATIVE KEYWORDS
+The 10–20 negative starter list from Step 6J.
+
+## 15. 🎯 THE GAP — WHAT [CLIENT NAME] SHOULD DO
+
+### 15A. Immediate Opportunities
+### 15B. Competitive Gaps (pain points no one addresses)
+### 15C. What to Avoid
+### 15D. Recommended First 3 Google Ads Angles for [CLIENT NAME]
 
 ═══════════════════════════════════════
 END OF STEP 3 REPORT
@@ -2352,6 +2407,9 @@ Before delivering, verify:
 - [ ] Did every competitor in the analysis pass all 4 criteria (Industry + Service + Scale + Geography)?
 - [ ] If fewer than 3 competitors passed, did I explicitly state "Insufficient comparable competitors" instead of padding with irrelevant ones?
 - [ ] Did I classify every scraped ad (lead-gen vs exclude) with counts?
+- [ ] Did I pull Auction Insights if an account exists (or state N/A for new clients) — and read budget-vs-rank loss?
+- [ ] Did I check branded-term poaching AND the client's own brand defense?
+- [ ] Did I derive a real negative-keyword list from what I observed (not a generic template)?
 - [ ] Did I tier competitors (Tier 1/2/3) with objective criteria?
 - [ ] Did I cite REAL competitor names and REAL ad copy in every pattern table?
 - [ ] Did I avoid generic "competitors often use X" statements?
@@ -2506,16 +2564,31 @@ Briefly plan:
 - How will I distinguish 🟢 Consensus from 🔴 Contrarian claims?
 - Which service will most likely emerge as the ONE recommendation? Is there a Strong Runner-Up worth flagging?
 
+## Step 1.5 — ACCOUNT-DATA-FIRST BENCHMARKS (query our OWN connected accounts BEFORE web search)
+
+Web-guessed benchmarks are generic and are the #1 accuracy weakness of this step. Our agency has real accounts connected via the **Adzviser MCP** (plus the Meta Ads / Google Ads MCPs) — our own book of clients. For every NUMERIC benchmark (CPL, CPM, CTR, and where available hook-rate / CVR), pull REAL numbers from our connected accounts FIRST; web search becomes the fallback + sanity-check, not the primary source.
+
+For each Top-3 service, before the web searches:
+1. **Find comparable own-accounts.** Call Adzviser \`list_workspace\` to see connected accounts, then pick the ones in the SAME or an adjacent vertical (e.g., for an HVAC client, our other HVAC / home-services accounts).
+2. **Pull real numbers.** Use Adzviser \`retrieve_reporting_data\` (fb_ads for Meta) to pull CPL / CPM / CTR / cost-per-result over the last 30–90 days for those accounts, lead-gen campaigns only.
+3. **Compute the real benchmark.** Report a median + top-decile CPL for this vertical/platform and the best-performing creative format, tagged \`🟢 OWN-ACCOUNT DATA\`. This — not a web average — is the authoritative **"Target CPL to Beat."**
+4. **Confidentiality (mandatory).** Report ONLY the aggregated vertical benchmark (a range + median). NEVER expose another client's name or identifiable numbers ("Client X did $Y CPL") in the output.
+5. **No comparable account?** State it explicitly ("No comparable own-account data for [SERVICE] — using web benchmarks") and fall through to the web searches.
+
+Then run Step 2's web searches to (a) fill what our accounts can't give (expert strategy, seasonality, platform changes) and (b) sanity-check the own-account numbers against the public range. **When the two disagree, trust the OWN-ACCOUNT data and note the delta.**
+
 ## Step 2 — Research via Web Search
 
 ### Required searches for EACH Top-3 Service ([PRIORITY_1], [PRIORITY_2], [PRIORITY_3] — only those populated):
 
 For each populated Top-3 service, run the following 8 searches. Substitute \`[SERVICE]\` with the actual service name.
 
-1. \`Meta Ads CPL benchmark [SERVICE] [GEOGRAPHY] 2025 2026\`
+**FIRST check the BUSINESS MODEL from Step 1's CHAIN CONTEXT.** Searches 3 and 4 below (weather-seasonality + government rebate) only make sense for a **local-consumer service** client. If Step 1 classified the client as **B2B / considered-purchase** or **e-commerce/DTC**, SKIP searches 3 and 4 (they return nothing usable — there are no government rebates or weather-seasons for buying an agency's or SaaS's service) and instead run: (3') \`[SERVICE] buyer sales cycle / decision triggers [CURRENT YEAR]\` and (4') \`[SERVICE] cost per lead / cost per booked call benchmark [GEOGRAPHY] 2025 2026\`. Note in the output that the consumer-specific modules were adapted, don't emit "no rebates found" filler.
+
+1. \`Meta Ads CPL benchmark [SERVICE] [GEOGRAPHY] 2025 2026\`  *(for B2B, target the correct object: cost per booked call / qualified lead — not a consumer CPL)*
 2. \`Meta Ads CPM CTR [SERVICE] [GEOGRAPHY] benchmark\`
-3. \`[SERVICE] seasonality [GEOGRAPHY] [CURRENT MONTH] [CURRENT YEAR]\`
-4. \`[SERVICE] government rebate [GEOGRAPHY] [CURRENT YEAR]\`
+3. \`[SERVICE] seasonality [GEOGRAPHY] [CURRENT MONTH] [CURRENT YEAR]\`  *(local-consumer only — see note above)*
+4. \`[SERVICE] government rebate [GEOGRAPHY] [CURRENT YEAR]\`  *(local-consumer only — see note above)*
 5. \`top Meta Ads experts [SERVICE] strategies 2025 2026\`
 6. \`[SERVICE] Meta Ads case study results\`
 7. \`Advantage+ audience [SERVICE] effectiveness\`
@@ -2740,11 +2813,15 @@ Cite specific, recent takes. Name the expert and link the source.
 |---|---|---|---|
 | [Name] | [Specific recommendation — one sentence] | [URL] | 🟢 / 🟡 / 🔴 |
 
-#### Audience Strategy (Broad vs Advantage+ vs Lookalike vs Interest)
-Same table format. What's the 2025-2026 consensus for [PRIORITY_1]? Any contrarian takes?
+#### Audience Strategy (Advantage+ default → when to override with Original Audiences)
+Same table format. **Baseline the framing to the 2026 paradigm, not the 2023 one.** Meta has consolidated targeting: **Advantage+ Audience is now the default** for most lead-gen, with your inputs treated as *suggestions* the system can expand past, not hard constraints. So do NOT frame this as a flat "Broad vs Advantage+ vs Lookalike vs Interest" menu of equals. Frame it as:
+- **Default:** Advantage+ Audience with the client's best signals as audience *suggestions* (customer list, high-intent interests, past converters).
+- **When to override** back to Original Audiences / manual (e.g., very tight geo, regulated categories, tiny niche where A+ over-expands, or a specific expert-cited exception for [PRIORITY_1]).
+- **Lookalikes:** note that their role has shrunk under A+ — position them as a *signal/suggestion source* feeding A+, not a standalone primary strategy, unless an expert specifically argues otherwise for [PRIORITY_1].
+Capture the 2025-2026 expert consensus AND any contrarian who still runs manual — but the default recommendation should be Advantage+ unless the data for [PRIORITY_1] says otherwise.
 
-#### Creative Format (UGC / Testimonial / Problem-Agitate-Solution / Talking-Head / Static)
-Same table format. What converts best for [PRIORITY_1] right now?
+#### Creative Format & Volume (UGC / Testimonial / Problem-Agitate-Solution / Talking-Head / Static)
+Same table format. What converts best for [PRIORITY_1] right now? **Also capture the creative-volume angle (the "Andromeda" / creative-diversity era):** under Advantage+, the lever that used to be audience slicing is now *creative variety* — the system needs a healthy volume of distinct concepts/angles to optimize across. Note what experts say about how many creatives/angles per ad set [PRIORITY_1] needs to feed the algorithm, not just which single format wins.
 
 #### Bidding Strategy (Cost Cap / Bid Cap / Lowest Cost / Highest Volume)
 Same table format.
@@ -3138,6 +3215,10 @@ Every insight you surface must be tagged:
 - What 2025-2026 platform changes matter most (AI Max, PMax evolution, Consent Mode V2, Enhanced Conversions)
 - How to distinguish 🟢 Consensus from 🔴 Contrarian
 
+## Step 1.5 — ACCOUNT-DATA-FIRST BENCHMARKS (query our OWN connected accounts BEFORE web search)
+
+Same rule as the Meta research step: pull REAL Google Ads benchmarks from our own connected accounts before web-guessing. Call Adzviser \`list_workspace\`, pick our accounts in the same/adjacent vertical, then \`retrieve_reporting_data\` (google_ads) for CPC / CTR / conversion rate / CPA / cost-per-lead over the last 30–90 days (lead-gen campaigns). Report the median + top-decile as \`🟢 OWN-ACCOUNT DATA\` — the authoritative "Target CPA/CPL to Beat." Report aggregated vertical numbers ONLY (never another client's name or identifiable figures). If no comparable account exists, say so and fall through to the web searches. Use the web searches below to fill gaps (expert strategy, seasonality, platform changes) and sanity-check; when they disagree with our account data, trust the account data and note the delta.
+
 ## Step 2 — Research via Web Search
 
 ### Required searches (perform all):
@@ -3519,11 +3600,12 @@ For every ad:
 - Attribution window settings
 - Conversion discrepancies
 
-## 1G. Audience Data
+## 1G. Audience & Creative-Volume Data
 - All Custom Audiences: type, size, freshness
 - All Lookalike Audiences: source, %, country
 - All Saved/Interest Audiences used
-- Advantage+ vs Manual targeting comparison
+- **Advantage+ adoption audit (2026 lens):** what share of spend runs through Advantage+ Audience vs. legacy manual/Interest/Lookalike targeting? Flag ad sets still stuck on narrow manual targeting that Advantage+ would likely outperform — running 2023-style manual audiences in 2026 is itself a finding, not a neutral choice. Note where manual is *correctly* retained (tight geo, regulated category, deliberate expert-cited exception).
+- **Creative volume vs. audience slicing:** how many distinct creative concepts/angles are live per ad set? Under Advantage+ the optimization lever is creative variety, not audience splits — an account with many narrow ad sets but only 1–2 creatives each is mis-structured for the current paradigm. Flag it.
 - Retargeting vs Prospecting spend split + performance
 
 ---
@@ -3656,6 +3738,8 @@ Days-to-fatigue per declining ad.
 | Interest-based | | | | | |
 | Broad | | | | | |
 | Retargeting | | | | | |
+
+**Interpret with the 2026 lens:** if manual/Interest ad sets currently beat Advantage+ here, check *why* before recommending "keep manual" — often it's insufficient creative volume or a starved A+ budget, not manual being superior. The default forward recommendation is to consolidate into Advantage+ with more creative variety unless the data shows a durable, structural reason manual wins for this account.
 
 ### 4B. Geographic Performance
 Top 3 best/worst cities by Cost/Result.
@@ -4453,8 +4537,16 @@ Apply these creative gates to every script you write:
 2. **Service noun in primary text** — surface the service in the first 6 words.
 3. **One concept per ad** — single Hook, single Message, single Offer angle, single CTA. NO Option A/B alternatives.
 4. **Statics declare archetype** — every static specifies ONE of: Poster / Proof Shot / Review Screenshot / Before-After Split / Big Number / Comparison. Each archetype's required ingredient must actually exist in the chain data (e.g., no real review → no Review Screenshot).
-5. **Numbers must trace** — any number in any script (Hook/Message/Offer/CTA/overlay) traces to Step 1, Step 2, Step 4 or Step 6. If it can't, use qualitative language ("most customers" not "73%").
-6. **Logo-swap test** — if a competitor could post this script unchanged, it's generic. Rewrite with the client's proof / place / personality.
+5. **Videos declare a STORY archetype** — every video specifies ONE of:
+   - **PAS** (Problem → Agitate → Solve) — lead with the pain, twist it, resolve with the service.
+   - **Demo / How-It-Works** — show the service happening; process/result-led.
+   - **Listicle** ("3 reasons…" / "5 signs you need…") — enumerated, fast-cut, snackable.
+   - **Founder / Team POV** — a person on camera speaking directly; authority + trust.
+   - **Testimonial / UGC** — real-customer voice, transformation-led (only if a real review/result exists in the chain data).
+   Each archetype's required ingredient must actually exist in the chain data — no fabricated testimonial, no demo footage you can't plausibly stage. This mirrors gate 4 for statics: it forces genuine creative variety instead of the same hook→problem→solution→offer→CTA arc every time.
+6. **Video archetype VARIETY per ad set** — when an ad set has ≥2 video ads, they MUST use ≥2 *different* story archetypes (e.g., 1A-V1 = PAS, 1A-V2 = Founder POV). Never ship two videos with the same archetype in one ad set — that's the video equivalent of the static-variety rule, and it's what feeds Advantage+ the creative diversity it needs to optimize. Pick archetypes suited to the service and to the winning structures decoded in Step 2 Section 10A.
+7. **Numbers must trace** — any number in any script (Hook/Message/Offer/CTA/overlay) traces to Step 1, Step 2, Step 4 or Step 6. If it can't, use qualitative language ("most customers" not "73%").
+8. **Logo-swap test** — if a competitor could post this script unchanged, it's generic. Rewrite with the client's proof / place / personality.
 
 Brainstorm internally 2-3 candidate scripts per ad slot, score on the gates above, output only the winners. Do not show the candidates.
 
@@ -4472,12 +4564,14 @@ Brainstorm internally 2-3 candidate scripts per ad slot, score on the gates abov
 ### Ad Set 1A · [Service Name]
 
 **Video Ad 1A-V1**
+- Archetype: [PAS / Demo / Listicle / Founder-POV / Testimonial-UGC — per Video Story Archetype gate; must differ from other videos in this ad set]
 - Hook: [...]
 - Message: [...]
 - Offer: [...]
 - CTA: [...]
 
 **Video Ad 1A-V2**
+- Archetype: [a DIFFERENT archetype than 1A-V1]
 - Hook: [...]
 - Message: [...]
 - Offer: [...]
@@ -4630,6 +4724,7 @@ Before delivering the document in Pass 2:
 - [ ] Scripts wrapped in \`::: script-card\` ... \`:::\` blocks?
 - [ ] Every ad from Pass 1 has its own script card in Section 5 (none hidden, none summarized)?
 - [ ] Each script card has ONE concept (no Option A / Option B pairs)?
+- [ ] Every video declared a Story Archetype in Pass 1, and each ad set with ≥2 videos used ≥2 different archetypes (no duplicate arcs per ad set)?
 - [ ] Scripts contain ONLY Hook/Message/Offer/CTA — no production specs, no Editor table, no Palak design specs?
 - [ ] Section 5 ends with ONE Global Approval block covering all 5.1/5.2/5.3 items as a package — not per-card signatures?
 - [ ] No "Account Manager" name or contact appears anywhere in the document (Pass 2 deliverable)?
@@ -5259,18 +5354,25 @@ Every word of the script — voiceover/dialogue AND on-screen overlay text — m
 - Split the on-screen overlay text into N chunks the same way (overlays may overlap a voiceover beat or be silent — that's fine)
 - Confirm: paste all panel "Voiceover" lines back-to-back → you should get the original spoken script verbatim. Same for overlay text.
 
-**4. Panel-by-panel arc (use this 9-panel default; adjust for 8 or 10):**
-- Panel 1 = **Hook frame 1** — the visual that stops the scroll (subject + unexpected element)
-- Panel 2 = **Hook payoff / setup** — the second beat that makes the viewer commit to watching
-- Panel 3 = **Problem or tension** — what's wrong / what's missing / what's frustrating
-- Panel 4 = **Problem amplified or pivot to solution** — the moment the value prop starts
-- Panel 5 = **Solution introduction** — the service in action, named, visible
-- Panel 6 = **Proof / demo / testimonial** — credibility moment (real shot, transformation, customer)
-- Panel 7 = **Offer reveal** — the price / promo / guarantee surfaces
-- Panel 8 = **Offer detail or urgency** — what's included, deadline, scarcity, de-risk line
-- Panel 9 = **CTA** — exact action, phone/site shown, logo
+**4. Panel-by-panel arc — CHOOSE THE ARC THAT MATCHES THIS VIDEO'S DECLARED ARCHETYPE (from Pass 1).**
+Do NOT force every video into the same beats. Read the video's Archetype line and use the matching arc below (shown at the 9-panel default; compress to 8 or expand to 10 the same way as the panel-count rule). The word-by-word allocation rule in step 3 still applies regardless of arc.
 
-For 8 panels, merge Panels 3+4 into one "Problem → Solution" beat. For 10 panels, split Panel 6 (Proof) into two beats: testimonial + transformation.
+**PAS (Problem → Agitate → Solve) — the classic 9-beat default:**
+- P1 **Hook frame 1** (scroll-stopper) · P2 **Hook payoff/setup** · P3 **Problem** · P4 **Problem amplified** · P5 **Solution introduced** (service named, visible) · P6 **Proof/demo** · P7 **Offer reveal** · P8 **Offer detail/urgency** · P9 **CTA**
+
+**Demo / How-It-Works:**
+- P1 **Hook: the end result** (the finished transformation up front) · P2 **"Here's how"** setup · P3 **Step 1 of the process** · P4 **Step 2** · P5 **Step 3** · P6 **Result / before→after** · P7 **Proof point** (review, credential) · P8 **Offer** · P9 **CTA**
+
+**Listicle ("3 reasons…" / "5 signs…"):**
+- P1 **Hook: the list promise** ("3 signs your furnace is about to fail") · P2 **Item 1** · P3 **Item 2** · P4 **Item 3** · P5 **(Item 4/5 or) payoff turn** · P6 **Bridge to the service** · P7 **Proof** · P8 **Offer** · P9 **CTA** — fast cuts, big overlay numbers per item.
+
+**Founder / Team POV:**
+- P1 **Founder on camera, direct address hook** · P2 **Who they are / credibility** · P3 **The problem they see clients face** · P4 **Their belief / different approach** · P5 **The service explained by them** · P6 **Proof they point to** · P7 **Offer, stated personally** · P8 **Reassurance / de-risk** · P9 **CTA, direct to camera**
+
+**Testimonial / UGC:**
+- P1 **Customer hook — raw, mid-sentence relatable line** · P2 **Their "before" situation** · P3 **The turning point (finding the client)** · P4 **The experience** · P5 **The result they got** · P6 **Emotional payoff / recommendation** · P7 **B-roll of service + offer overlay** · P8 **Offer detail** · P9 **CTA**
+
+For 8 panels, merge the two weakest adjacent middle beats. For 10 panels, split the proof/result beat into two (testimonial + transformation). If two videos in the same ad set share this template, they must be running DIFFERENT arcs above (per the variety gate) — the storyboards should look visibly different, not recolored copies.
 
 **5. Derive the visual scene per panel** — match the script intent to a believable scene given the service category. Examples:
 - HVAC: shivering homeowner → thermostat showing low temp → technician at door → tech replacing furnace → digital airflow visual → relieved family → offer screen with $X OFF → fine-print deadline → hand calling
@@ -5576,7 +5678,7 @@ Determine the service scope BEFORE writing the brief:
 4. **Determine scope:**
    - If multi-service NOT invoked → scope = recommended service only (single-service mode)
    - If multi-service invoked AND Step 4 flagged a runner-up → scope = recommended + runner-up (multi-service mode, no compatibility check)
-   - If multi-service invoked AND no runner-up flagged in Step 4 → ask the strategist explicitly: "Step 4 did not flag a Strong Runner-Up. Do you want me to use [PRIORITY_2] regardless, or run single-service mode?"
+   - If multi-service invoked AND no runner-up flagged in Step 4 → **default autonomously to single-service mode** (Step 4's recommended service) so an unattended run never stalls; note in the brief: "Defaulted to single-service — Step 4 flagged no Strong Runner-Up; strategist can add [PRIORITY_2] on review." Only pause for the strategist here if the run is being executed interactively (not in an unattended orchestrator run).
 
 State the determined scope at the top of the brief.
 
@@ -5812,7 +5914,7 @@ The audience strategy below is pulled from Step 4 Section 4A's expert recommenda
 | **Include audience** | [Name of Lookalike or Custom Audience] | |
 | **Exclude audience** | [Name — e.g. "[CLIENT_NAME] Customers (Source)"] | Uploaded from [CRM] |
 | **Advantage+ audience toggle** | [ON / OFF — per Step 4 Section 4A recommendation] | Step 4 |
-| **Advantage+ placements** | [ON / OFF — per Step 4 recommendation, default OFF for audit-able performance data] | Step 4 |
+| **Advantage+ placements** | [ON by default (2026 best practice — maximizes delivery and lowers CPM; analyze per-placement via the Breakdown view and exclude only proven wasters). Turn OFF only when Step 4 gives a specific reason for this client.] | Step 4 |
 | **Placements (manual)** | FB Feed, IG Feed, FB Reels, IG Reels, IG Stories, FB Stories | [Adjust per Step 4 data] |
 | **Objective** | [from CONVERSION_DESTINATION mapping below] | |
 | **Conversion location** | [from CONVERSION_DESTINATION mapping below] | |
@@ -6625,8 +6727,9 @@ For each ad set from Step 9's structure, present this complete block. Inside eac
 **Why this works:** [1-2 sentences citing chain data — Step 2 competitor pattern, Step 4 cheat code, etc.]
 
 ##### CONCEPT
+- **Story Archetype:** [PAS / Demo / Listicle / Founder-POV / Testimonial-UGC — carry over the archetype declared for this video in Step 8 Pass 1. If two videos share an ad set, they must be different archetypes. This drives the pacing note and the ON-SCREEN/VOICEOVER beat structure below.]
 - **Hook (first 3 sec):** [One sentence — what the viewer sees/hears that stops the scroll. The 1-second rule applies to video too: within the first second, the viewer must know WHAT service this is about — name it or show it unmistakably on screen.]
-- **Message:** [3-5 sentences — story arc]
+- **Message:** [3-5 sentences — story arc that follows the declared archetype's beats]
 - **Offer:** [Exact offer surfaced in the ad]
 - **CTA:** [Exact CTA matching [CONVERSION_DESTINATION]]
 
@@ -6847,6 +6950,7 @@ Before delivering, verify:
 - [ ] Format selections respect \`[UGC_PRODUCTION_MODE]\` constraints?
 - [ ] Each ad set has the right ad count: \`[NUM_VIDEO_SCRIPTS]\` videos + \`[NUM_STATIC_SCRIPTS]\` statics?
 - [ ] Each ad has ONE creative concept (no "Option 1 / Option 2 / Both")?
+- [ ] Each video ad states its Story Archetype, and every ad set with ≥2 videos uses ≥2 different archetypes (no duplicate arcs in one ad set)?
 - [ ] Each video ad has Production Specs table?
 - [ ] Each video ad has Editor Section with 3-column table (ON-SCREEN | VOICEOVER | DURATION)?
 - [ ] Each static ad has Palak Section but NO Editor Section?
@@ -7641,6 +7745,12 @@ You will produce TWO outputs in this conversation, in this order:
 1. **CHAIN CONTEXT — Internal Research Notes.** Conversational prose displayed directly in the chat (no code fence). Contains all research findings the downstream chain will consume but the team-facing deliverable should NOT show: persona names, locked terminology, full competitor list, brand voice quotes, data integrity issues, gaps blocking downstream steps. Output this block FIRST.
 
 2. **DELIVERABLE — Team Primer.** Polished, copy-paste-ready markdown matching the OUTPUT STRUCTURE defined below. Output this entire block inside a single \`\`\`markdown ... \`\`\` fenced code block so the user can copy it cleanly into the Beautifier. Output this block SECOND.
+
+**BEFORE either output, lock the BUSINESS MODEL CLASSIFICATION at the very top of CHAIN CONTEXT — it governs the entire chain.** Several downstream modules are written for *local-consumer* businesses; they must ADAPT (not force-fit) for other models. Classify the client into ONE and state it explicitly:
+- **LOCAL-CONSUMER SERVICE** (HVAC, dental, med-spa, home services, clinics) — the default the chain is tuned for. Government-rebate research, insurance/financing "how customers pay", weather/seasonality timing, and named consumer personas all APPLY.
+- **B2B / CONSIDERED-PURCHASE** (agencies, SaaS, professional/B2B services, contractors selling to businesses) — usually NO government rebates, NO insurance/financing angle, weak weather-seasonality. For these clients every downstream step must: skip the rebate / insurance / weather-seasonality modules with a one-line "N/A — B2B offer" instead of padding; treat the economic target as **cost per qualified lead / cost per booked call** over a longer sales cycle (lead → SQL → close), NOT a consumer CPL; and build a **business-buyer persona** (role, company size, trigger event), not a named consumer archetype.
+- **E-COMMERCE / DTC** — ROAS / AOV / first-purchase economics; rebate + insurance modules are N/A; seasonality is the retail calendar (BFCM, holidays), not weather.
+Downstream steps READ this classification from CHAIN CONTEXT and adapt any local-consumer-specific section to the correct economic object rather than emitting empty "no rebates found" filler.
 
 ═══════════════════════════════════════
 END OF EXECUTION DIRECTIVE
@@ -9530,6 +9640,11 @@ function buildMasterPrompt(f) {
   const maxAds = f.f_max_ads_per_url || '250';
   const qcAgentsOn = f.f_qc_agents_enabled !== 'no';
   const clientName = (f.f_client_name && f.f_client_name.trim()) || '[CLIENT NAME]';
+  // --- Learning loop: the shared "Brain" folder on Google Drive (see _Prompt Generator Brain).
+  // Every run READS benchmark-cache.json first (real targets) and APPENDS learnings at the end.
+  // Locked by folder ID so the run writes here even though the operator only selected the client folder.
+  const BRAIN_ID = (f.f_brain_folder_id && f.f_brain_folder_id.trim()) || '186o14Efv63ExoYYdg7Q-OYozu_jSQ-V5';
+  const BRAIN_NAME = '_Prompt Generator Brain';
   const outcomeLabel = (typeof describeSelection === 'function') ? describeSelection(stepList) : (stepList.length + ' steps');
   const hasScriptSteps = stepList.includes('p8') || stepList.includes('p10');
   const emitsClientDoc = stepList.includes('p8');
@@ -9585,17 +9700,18 @@ function buildMasterPrompt(f) {
     '## 1. APIFY BUDGET CAP (hard ceiling)',
     'Total Apify spend across this run must not exceed **$' + budgetCap + '**. Per-URL scrape cap: **' + maxAds + ' ads**. If you would exceed either, STOP and emit a failure brief naming the step + projected cost.',
     '',
-    '## 2. VAULT DISCIPLINE',
-    'Every step saves its FULL output to Google Drive folder "PPC Guru Research Vault / ' + clientName + '" before continuing. After save, confirm in one line: "✅ Vault updated: <filename>". If Drive save fails, STOP — never continue without the save.',
+    '## 2. VAULT DISCIPLINE — SAVE **AND** RELOAD (the vault is the source of truth, not chat memory)',
+    'Every step saves its FULL output to Google Drive folder "PPC Guru Research Vault / ' + clientName + '" before continuing, using a DETERMINISTIC filename: `PPCGuru_Step-0N_<ShortName>.md` (zero-padded step number) — e.g. `PPCGuru_Step-02_MetaCompetitorIntel.md`, `PPCGuru_Step-08_StrategyRecap.md`. After save, confirm in one line: "✅ Vault updated: <filename>". If Drive save fails, STOP — never continue without the save.',
+    '**RELOAD RULE (critical — closes the mid-run compaction hole):** this is a long run and Claude Code may auto-compact the conversation partway through, replacing earlier steps\' verbatim detail with a lossy summary. Therefore, before a step uses any prior step\'s exact figures, competitor names, decoded hooks, or scripts, **RELOAD that prior step\'s vault file from Drive and quote from the file** — do NOT rely on conversation memory. If a value you need is not in the reloaded vault file, STOP (never fabricate it, never silently drop it). The vault is written so it can be re-read during the run, not just saved.',
     '',
     '## 3. TRACE-OR-STOP (numbers + claims)',
     'Every number, competitor name, benchmark, and dollar figure must trace to a prior chain source (a vault file or this prompt). If it cannot be traced, replace with qualitative language ("most customers" not "73%"). Never fabricate to fill a gap.',
     '',
-    '## 4. ERROR-STOP, DO NOT FABRICATE FORWARD',
-    'If any MCP call fails or any step cannot complete with real data, STOP and emit a failure brief naming the step + specific failure. Do not invent data to keep the chain moving.',
+    '## 4. ERROR-STOP, DO NOT FABRICATE FORWARD (hard-fail vs empty are different)',
+    'Distinguish two cases so a transient glitch does not halt a recoverable run and an empty result does not get fabricated over: (a) an MCP call **hard-fails** (auth error, 4xx/5xx, timeout) → RETRY once; if it still fails, STOP and emit a failure brief naming the step + the exact error. (b) an MCP call **succeeds but returns empty or partial data** (no ads for a search URL, a single video will not transcribe) → NOTE it in the output and continue with what exists. Never invent data to fill a gap; never halt the whole run over one empty result.',
     '',
-    '## 5. SUB-AGENT TOKEN ECONOMY',
-    'When invoking sub-agents (see Sub-Agent Orchestration Plan), give each sub-agent ONLY the slice of context it needs — never dump the entire chain. Sub-agents have bounded contexts by design.',
+    '## 5. SUB-AGENTS — REAL, NOT ROLE-PLAYED (and scoped)',
+    'When the plan says "invoke/spawn the X sub-agent," actually spawn a SEPARATE agent with only its scoped inputs — do NOT grade your own work inline in the main context (that turns every QC gate, especially the creative 90/100 gate, into the same context certifying itself). In your output, paste the sub-agent\'s RAW returned verdict/scorecard verbatim (e.g. the creative-auditor\'s full SCORE block) so the gate is auditable — **a gate with no pasted sub-agent output did not run.** Give each sub-agent ONLY the slice of context it needs; never dump the entire chain.',
     '',
     '## 6. CREATIVE-AD-AUDITOR SKILL IS AUTHORITATIVE',
     'For any creative script (P8 video or static), spawn a **creative-auditor sub-agent** that applies the EMBEDDED CREATIVE AUDIT RUBRIC defined below to score 0–100 (no installed skill required — the inline rubric is authoritative). The score is NOT craft-in-a-vacuum: the auditor is handed the Step 2 competitive set, and a script that does not beat it (a near-clone, or one that loses to the strongest rival ad) cannot pass. Scripts must reach **≥90/100 AND clear the competitive gate** to ship to the strategist. See the Sub-Agent Specifications + Embedded Creative Audit Rubric + Creative Production Protocol below.',
@@ -9741,9 +9857,57 @@ function buildMasterPrompt(f) {
     const isLast = idx === stepList.length - 1;
     const sep = isLast ?
       '\n\n═══════════════════════════════════════\n# ✅ STEP ' + stepNum + ' COMPLETE — END OF CHAIN\n═══════════════════════════════════════\n\nThis is the final step of this run. After completing it, run the final-consolidation logic below and produce the final deliverable per the chosen outcome.\n' :
-      '\n\n═══════════════════════════════════════\n# ═══ STEP ' + stepNum + ' → STEP ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' ═══\n═══════════════════════════════════════\n\n1. Save the Step ' + stepNum + ' full output to Drive (folder "PPC Guru Research Vault / ' + clientName + '", filename per the Step ' + stepNum + ' vault spec). Confirm: "✅ Vault updated: <filename>".\n2. Run a one-line self-check: did this step produce all sections it was asked to? If no — STOP and emit a failure brief. If yes — continue to Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + '.\n' + (qcAgentsOn && ['p2','p3','p4','p5'].includes(pid) ? '3. Invoke `research-qc` sub-agent on the Step ' + stepNum + ' output. If it returns "Pass" → continue. If it returns weak-claim flags → patch the weak claims using one targeted MCP re-query (within budget cap), re-save vault, then continue.\n' : '') + (qcAgentsOn && ['p6','p7'].includes(pid) ? '3. Invoke `audit-qc` sub-agent on the Step ' + stepNum + ' output. If "Pass" → continue. If missing-data flags → mark them in the output and continue (audit data is best-effort).\n' : '');
-    return '═══════════════════════════════════════\n# STEP ' + stepNum + ' OF ' + stepList.length + ' — ' + stepName + '\n═══════════════════════════════════════\n\n' + body + sep;
-  }).join('\n');
+      '\n\n═══════════════════════════════════════\n# ═══ STEP ' + stepNum + ' → STEP ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' ═══\n═══════════════════════════════════════\n\n1. Save the Step ' + stepNum + ' full output to Drive as `PPCGuru_Step-' + String(stepNum).padStart(2, '0') + '_<ShortName>.md` (folder "PPC Guru Research Vault / ' + clientName + '"). Confirm: "✅ Vault updated: <filename>".\n2. Run a one-line self-check: did this step produce all sections it was asked to? If no — STOP and emit a failure brief. If yes — continue to Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + '.\n3. RELOAD-ON-ENTRY: begin Step ' + (PROMPT_INFO[stepList[idx+1]] ? PROMPT_INFO[stepList[idx+1]].num : '?') + ' by reloading from the vault the specific prior-step files it references (per Operating Rule 2) — do not trust conversation memory, which may have been auto-compacted.\n' + (qcAgentsOn && ['p2','p3','p4','p5'].includes(pid) ? '4. Invoke the `research-qc` sub-agent (a real, separate agent) on the Step ' + stepNum + ' output and paste its raw verdict. If "Pass" → continue. If weak-claim flags → patch them with one targeted MCP re-query (within budget cap), re-save vault, then continue.\n' : '') + (qcAgentsOn && ['p6','p7'].includes(pid) ? '4. Invoke the `audit-qc` sub-agent (a real, separate agent) on the Step ' + stepNum + ' output and paste its raw verdict. If "Pass" → continue. If missing-data flags → mark them in the output and continue (audit data is best-effort).\n' : '');
+    return { pid: pid, text: '═══════════════════════════════════════\n# STEP ' + stepNum + ' OF ' + stepList.length + ' — ' + stepName + '\n═══════════════════════════════════════\n\n' + body + sep };
+  });
+  // Split the chain so the creative audit + Pass-1 approval gate executes AT the script-authoring
+  // step (P8, or P10 if P8 absent) — before P9/P11/P10 consume the approved scripts — instead of
+  // being appended after "END OF CHAIN". chainAfterGate is '' when there is no script step.
+  const _gateStep = hasScriptSteps ? (stepList.indexOf('p8') !== -1 ? 'p8' : 'p10') : null;
+  const _gateCut = _gateStep ? stepBodies.findIndex(function(e) { return e.pid === _gateStep; }) : -1;
+  const chainThroughGate = (_gateCut >= 0 ? stepBodies.slice(0, _gateCut + 1) : stepBodies).map(function(e) { return e.text; }).join('\n');
+  const chainAfterGate = (_gateCut >= 0 ? stepBodies.slice(_gateCut + 1) : []).map(function(e) { return e.text; }).join('\n');
+
+  // --- Section 5c: MCP PRE-FLIGHT + RESUME (fail fast before a long unattended run) ---
+  // Derive exactly which connectors THIS run needs from the selected steps, so the
+  // pre-flight names them specifically rather than probing everything.
+  const needApify = stepList.includes('p2') || stepList.includes('p3');
+  const needMetaAds = stepList.includes('p2') || stepList.includes('p6');
+  const needAdzviser = stepList.includes('p4') || stepList.includes('p5') || stepList.includes('p6') || stepList.includes('p7');
+  const needGoogleAds = stepList.includes('p7');
+  const preflightChecks = [];
+  preflightChecks.push('- **Google Drive** (always — the Research Vault): confirm you can list/create the folder "PPC Guru Research Vault / ' + clientName + '". This is where every step is saved; if it fails, nothing downstream is recoverable.');
+  if (needApify) preflightChecks.push('- **Apify** (Steps ' + [stepList.includes('p2') ? '2' : '', stepList.includes('p3') ? '3' : ''].filter(Boolean).join(' + ') + ' — competitor scraping): confirm the connector responds (a cheap call such as listing your actors or a docs search). Do NOT run a paid scrape here — just confirm auth.');
+  if (needMetaAds) preflightChecks.push('- **Meta Ads** (Step ' + [stepList.includes('p2') ? '2 discovery' : '', stepList.includes('p6') ? '6 audit' : ''].filter(Boolean).join(' + ') + '): confirm the connector responds. For Step 6 you also need the client Meta ad-account id (act_…); if intake did not provide it, ADD it to the upfront interview and confirm it resolves to exactly one account before Step 6.');
+  if (needAdzviser) preflightChecks.push('- **Adzviser** (Steps ' + [ (stepList.includes('p4') || stepList.includes('p5')) ? '4/5 benchmarks' : '', stepList.includes('p6') ? '6' : '', stepList.includes('p7') ? '7' : ''].filter(Boolean).join(' + ') + '): confirm the connector responds and list our connected workspaces. Steps 4/5 pull our own-account benchmarks; Steps 6/7 audit the client\'s own account. If no comparable account exists for benchmarks, note it and fall back to web; if the client has no own account, mark Steps 6/7 "N/A — no account access (new client)" NOW rather than discovering it mid-run.');
+  if (needGoogleAds) preflightChecks.push('- **Google Ads** (Step 7 audit): confirm the connector responds and the client customer id is available; otherwise mark Step 7 "N/A — no account access".');
+  const secPreflight = [
+    '═══════════════════════════════════════',
+    '# STEP 0 — MCP PRE-FLIGHT + RESUME CHECK (run BEFORE Step 1)',
+    '═══════════════════════════════════════',
+    '',
+    'This is an unattended multi-step run. A connector that is missing or unauthorized must be caught NOW — not two hours in, after Apify spend and a half-built vault. Before executing Step 1, run this pre-flight:',
+    '',
+    '## A. Connector probe (fail fast)',
+    'Make ONE cheap, read-only call to each connector this run needs and confirm it responds:',
+    preflightChecks.join('\n'),
+    '',
+    'If ANY required connector is missing or unauthorized, STOP immediately and emit a short brief: which connector, what it blocks, and how to connect it. Do not start Step 1 with a known-missing connector (except Adzviser/Google Ads, which you may mark N/A and continue if this is a new client with no account).',
+    '',
+    '## B. Resume check (idempotency)',
+    'List the vault folder "PPC Guru Research Vault / ' + clientName + '" first. If step files already exist from an earlier interrupted run, this is a RESUME: read the existing step outputs, report "▶ Resuming — Steps X, Y already in vault", and continue from the first MISSING step instead of re-running (and re-paying for) completed work. Only re-run a completed step if its vault file is empty or obviously truncated.',
+    '',
+    '## C. Spend ledger (enforce the cap, do not trust honor system)',
+    'Open a running Apify spend tally at $0 and count EVERY Apify actor run against it — the Meta scrape, the Google scrape, AND each video transcription (the transcription actor bills too; do not leave it out). Before each run, estimate its cost (scrapes ≈ ads × ~$0.75/1000; transcription ≈ per-video actor rate) and add it; after each run, reconcile to the actual cost from the Apify run metadata. Print the running total after every run ("Apify spend: $X.XX / $' + budgetCap + '"). If the tally would cross $' + budgetCap + ', STOP per Operating Rule 1 — never let it silently exceed.',
+    '',
+    '## D. Brain read (learning loop — the tool gets smarter every run)',
+    'There is ONE shared memory folder on Google Drive, "' + BRAIN_NAME + '" (folder id `' + BRAIN_ID + '`), used by EVERY run for EVERY client. It is NOT the client folder — reach it directly by that id even though the operator only selected the client folder for this session.',
+    '- Open `benchmark-cache.json` from that folder and load it into working memory. It holds a `benchmarks` array of REAL CPL/CPM/CTR figures pulled from our own accounts on prior runs, each keyed by {vertical, geo, platform, metric}.',
+    '- For this client\'s vertical + geo, if a fresh entry exists (updated within the last 180 days), treat its value as the **"Target CPL/CPM/CTR to beat"** downstream (Steps 4/5/6/7) INSTEAD of a web guess. Tag it `🧠 BRAIN BENCHMARK` so it is traceable. Even when you use a cached value, if the step already queries that own account, still make the cheap live pull and compare: if the live number has drifted >20% from cache, use the LIVE number and flag the cache entry for refresh at the end. If no fresh entry matches, fall back to own-account query then web, exactly as before — and you will write what you find back at the end (Section below).',
+    '- Also open `evolution-log.md` from the same folder and skim the last ~15 entries. If a recurring HURDLE or FIX IDEA matches this client\'s platform/vertical (e.g. "video-search URL returned too few ads", "creative capped for missing proof asset"), pre-empt it NOW — apply the known workaround up front instead of re-hitting the same wall. This is how the tool learns process, not just numbers.',
+    '- If the Brain folder or files cannot be opened, note "🧠 Brain unavailable — proceeding without cache" and continue; never STOP a run over the Brain.',
+    ''
+  ].join('\n');
 
   const sec6 = [
     '═══════════════════════════════════════',
@@ -9752,7 +9916,9 @@ function buildMasterPrompt(f) {
     '',
     'Execute each step in order. Between steps, run the vault-save + self-check protocol shown in the ═══ STEP N → N+1 ═══ separator. Do not skip ahead and do not parallelize the steps — they have data dependencies.',
     '',
-    stepBodies
+    hasScriptSteps ? '**CREATIVE-PHASE WIRING.** Step 8 authors the ad scripts. Immediately after Step 8\'s script drafting — and BEFORE the next step (P9/P11/P10) consumes them — the chain routes into the **CREATIVE PRODUCTION PHASE** (Embedded Creative Audit Rubric → 90/100 gate → the single Pass-1 Approval hard stop), which is printed inline right after Step 8 below. That approval gate IS Step 8\'s single Pass-1 human checkpoint — it replaces the plain "script preview" handoff written inside the Step 8 body (there is only ONE script-approval pause, not two). Do not show raw un-audited scripts to the strategist, and do not produce Step 8\'s Pass 2 recap document until after the Pass-1 approval. The "END OF CHAIN" marker later marks the end of the RESEARCH/spec steps; Phase B image upload and the final client document then follow.' : '',
+    '',
+    chainThroughGate
   ].join('\n');
 
   // --- Section 6b: Embedded creative audit rubric (self-contained; replaces the external skill) ---
@@ -9792,7 +9958,7 @@ function buildMasterPrompt(f) {
     '## STEP 3 — Competitive gate (the layer the standalone skill lacks — fed by the research)',
     'Because the 100-point scorecard is full, competition is enforced as a HARD GATE using the Step 2 decode + Step 4 cheat codes:',
     '- **Differentiated?** Logo-swap test — a competitor could NOT post this script unchanged, and it is not a near-clone of an ad already running in the Step 2 decode.',
-    '- **Beats the best?** It out-hooks the single strongest EXACT-competitor ad in the Step 2 decode for this angle.',
+    '- **Beats the best?** It out-hooks the single strongest EXACT-competitor ad in the Step 2 decode for this angle. **PROOF REQUIRED (anti-self-inflation):** to answer YES you MUST (a) quote the actual rival hook you are beating verbatim from the Step 2 decode, by competitor name, and (b) state the ONE concrete reason this concept out-hooks it (sharper specificity, stronger proof, better-qualified promise — not "it is more engaging"). If you cannot name and quote a specific rival ad, the answer is NO by default — never assert "beats best rival" against an unnamed or hypothetical competitor.',
     'Fail EITHER → the script is CAPPED at **89** (cannot ship), regardless of craft score.',
     '',
     '## Hard gates / minimum launch standards (tripping any one blocks the ship)',
@@ -9832,7 +9998,7 @@ function buildMasterPrompt(f) {
     '  Offer & value ............ xx/10      Policy & claim safety .... xx/5',
     '                                        Lead-quality control ..... xx/5',
     'HARD GATES: [none | which gate tripped and why]',
-    'COMPETITIVE VERDICT: Differentiated? YES/NO · Beats best rival ([name])? YES/NO',
+    'COMPETITIVE VERDICT: Differentiated? YES/NO · Beats best rival? YES/NO — rival beaten: [competitor name] · rival hook quoted: "[verbatim]" · why this wins: [one concrete reason]',
     'TOP 3 FIXES: 1) ...  2) ...  3) ...',
     'REVISED HOOK / CTA: [copy the strategist can hand to a designer/editor]',
     '```',
@@ -9848,6 +10014,8 @@ function buildMasterPrompt(f) {
     '═══════════════════════════════════════',
     '# CREATIVE PRODUCTION PROTOCOL — 90/100 GATE',
     '═══════════════════════════════════════',
+    '',
+    '**(You have just completed Step 8\'s script drafting. Run this creative gate NOW — before the next step consumes the scripts — then the single Pass-1 Approval hard stop below. Do not advance to the next step until the operator replies GO.)**',
     '',
     'When Step 8 reaches Pass 1 (creative scripts) — BEFORE showing anything to the strategist — every script must go through this loop:',
     '',
@@ -9868,6 +10036,8 @@ function buildMasterPrompt(f) {
     '═══════════════════════════════════════',
     '# PASS 1 APPROVAL GATE — HARD STOP',
     '═══════════════════════════════════════',
+    '',
+    '**This IS Step 8\'s single Pass 1 human checkpoint — it REPLACES the plain "script preview" handoff written inside the Step 8 body. Do not pause the operator twice: run the audit first, then emit THIS gate (with audit verdicts), and only continue to Step 8\'s Pass 2 recap document after the operator replies GO.**',
     '',
     'Once all scripts have been audited (≥90 or 3-attempts exhausted) and storyboards validated, emit exactly this block — do NOT continue past it without an explicit GO from the operator:',
     '',
@@ -9937,7 +10107,38 @@ function buildMasterPrompt(f) {
     ''
   ].join('\n');
 
-  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, sec6, secRubric, sec7, sec8, sec9, sec10].filter(function(s) { return s; }).join('\n');
+  // --- Section 11: Brain write (EMIT — the last thing every run does) ---
+  // Appends real benchmarks + a hurdle retrospective to the shared Brain folder so the
+  // NEXT run (any client, any teammate) is smarter. Never writes client-confidential data.
+  const secBrain = [
+    '═══════════════════════════════════════',
+    '# FINAL STEP — BRAIN WRITE (do this LAST, after the deliverable, every run)',
+    '═══════════════════════════════════════',
+    '',
+    'Before you finish, update the shared memory folder "' + BRAIN_NAME + '" (folder id `' + BRAIN_ID + '`) — the same folder you read in STEP 0 Section D. This is what makes the tool compound. Reach it by id; it is NOT the client folder. Two writes:',
+    '',
+    '## 1. benchmark-cache.json — upsert the REAL numbers you observed',
+    'For every own-account benchmark this run actually pulled (Steps 4/5/6/7 via Adzviser/Meta/Google), add or update an entry in the `benchmarks` array. **Concurrency-safe write:** re-read `benchmark-cache.json` from Drive IMMEDIATELY before writing (not the copy you loaded at STEP 0 — another teammate\'s run may have written in between); merge your entry into that LATEST version and write the whole file back as valid JSON, so you never clobber a parallel run\'s entry. Each entry:',
+    '```json',
+    '{ "vertical": "<e.g. HVAC>", "geo": "<e.g. GTA>", "platform": "meta|google", "metric": "CPL|CPM|CTR", "value": <number>, "currency": "CAD", "source": "own-account", "sample_size": <# accounts or conversions behind this figure>, "window_days": <lookback, e.g. 90>, "updated": "<today YYYY-MM-DD>", "run": "<client-first-name+date, e.g. ecocare-2026-07-09>" }',
+    '```',
+    'Rules: aggregate only — **no other client\'s name, no raw account IDs**. **Sample-size gating (do NOT blindly overwrite):** if an entry for the same {vertical, geo, platform, metric} already exists, only replace its value when your `sample_size` is ≥ the existing one; if yours is smaller, KEEP the existing figure and just append your run id to its history — a thin or anomalous run must never clobber a well-sampled median for 180 days. If sample sizes are comparable, use the more recent. Always refresh `updated` when you touch an entry. If this run pulled no own-account numbers, skip this write.',
+    '',
+    '## 2. evolution-log.md — append one retrospective entry',
+    'Append (do not overwrite) one entry at the end of the file, using its documented format:',
+    '```',
+    '### <today YYYY-MM-DD> · run <client-first-name+date> · ' + (stepList.filter(function(p){return p==="p2"||p==="p6"||p==="p10";}).length ? 'meta' : '') + '/' + (stepList.filter(function(p){return p==="p3"||p==="p7"||p==="p11";}).length ? 'google' : '') + ' · <vertical/geo>',
+    '- HURDLES: <what broke / stalled / was ambiguous / came back empty / capped a creative score> (or "none")',
+    '- MCP: <any connector that failed, was slow, or returned too little> (or "all healthy")',
+    '- BENCHMARKS: <which {vertical/geo/metric} figures you wrote to benchmark-cache.json> (or "none pulled")',
+    '- CREATIVE GATE: <scripts that passed 90+; and WHY any were capped — e.g. "missing real proof asset: rating/license"> (or "n/a")',
+    '- FIX IDEAS: <concrete prompt/tool changes this run suggests> (or "none")',
+    '```',
+    'Keep it factual and free of client-confidential data (no client names beyond the short run tag, no raw account IDs, no verbatim proprietary strategy). If you cannot reach the Brain folder, note "🧠 Brain write skipped — folder unavailable" in your final summary and finish normally; never fail the run over the Brain write.',
+    ''
+  ].join('\n');
+
+  return [sec1, sec2, sec3, sec4, sec5, secAgentSpecs, secPreflight, sec6, secRubric, sec7, sec8, chainAfterGate, sec9, sec10, secBrain].filter(function(s) { return s; }).join('\n');
 }
 
 function buildPrompt(pid) {
