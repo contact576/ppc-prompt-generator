@@ -17,6 +17,18 @@ A top-of-page toggle (`f_runtime`) decides what the app *outputs*. This is the m
 
 `selectedPrompts` (the checklist selection) is the single source of truth in BOTH runtimes. Any edit to the selection or output pipeline must be reasoned about twice — once per runtime — and `runDiagnostics` smoke-tests both.
 
+## Learning loop — the shared "Brain" (Drive) + team runtime standard
+
+- **Team runtime standard: Claude Code orchestrator mode** (now the default `f_runtime`). The whole team runs the ONE master prompt; the per-step "Claude Chat" path is legacy/fallback. The Brain learning loop only fires in Claude Code mode.
+- **The Brain** is one fixed Google Drive folder `_Prompt Generator Brain` (id `186o14Efv63ExoYYdg7Q-OYozu_jSQ-V5`, overridable via `f_brain_folder_id`) holding `benchmark-cache.json` (real CPL/CPM/CTR by `{vertical,geo,platform,metric}`) + `evolution-log.md` (per-run hurdle retrospectives). `buildMasterPrompt` READS both at STEP 0 Section D and WRITES both in the final "BRAIN WRITE" section. Every client run reads/writes the same Brain regardless of which client folder the operator selected (reached by folder id). Writes are **sample-size-gated** (a thin run can't clobber a well-sampled median) and **concurrency-safe** (re-read + merge before write).
+- **Confidentiality:** the Brain lives ONLY in Drive (never this public repo); writes are aggregate-only (no client names, no raw account IDs). The folder MUST stay restricted-access — never set its sharing to "anyone with link," since the folder id is committed here.
+- **Weekly evolve-job:** a scheduled fresh-session Routine reads `evolution-log.md` and opens a draft PR (`evolve: …`) with prompt fixes for recurring hurdles. Human-gated merge, never auto-merge.
+
+## Apify actor facts (verified live 2026-07-11)
+
+- **Scrape (`curious_coder/facebook-ads-library-scraper`)** returns snapshot fields in **snake_case** — the video CDN URL is `snapshot.videos[].video_hd_url` / `video_sd_url` (NOT camelCase `videoHdUrl`). 99.8% success, pay-per-event $0.00075/ad, minimum 10 charged results/run. This is the P2 "decode" actor.
+- **Transcription (Step 7A):** prefer a direct-media-URL, auto-language actor (`hgservices/speech-to-text` Deepgram, or `truefetch/video-to-text`); `donjuan_mime/audio-video-to-text` is the low-adoption $5/mo fallback and accepts only `{source_url, model}` (no `language` field). The **visual** decode is done by the orchestrator's own multimodal vision on `video_preview_image_url` + sampled frames — no cheap dedicated visual-analysis actor exists in the store.
+
 ## Phase A selection model (platform-separated)
 
 The step picker is organized by **platform**, because ~99% of runs are single-platform. Don't reintroduce the old "bundle grid + hidden custom picker" model — it was removed for being confusing.

@@ -6,6 +6,46 @@
 
 ---
 
+## 0c. Session record — 2026-07-11 (pre-launch QC + fast-follow batch)
+
+> Full start-to-end QC before merging to main for team use. 3 read-only sub-agents (architecture,
+> prompt-chain/domain, beautifier/learning-loop) + live Apify actor tests. No client data recorded.
+
+**Scores:** Architecture & Reliability 88 · Prompt Chain & Domain Quality 88 · Beautifier + Rendering 83 ·
+External Data Plumbing (Apify) 82 (post-fix) · **overall ~85/100.** Verdict: client-grade; cleared to merge
+after the launch-blocker fix.
+
+**Live actor tests (2026-07-11):**
+- `curious_coder/facebook-ads-library-scraper` — healthy (99.8% success, not deprecated). Real scrape returned
+  video ads with populated `snapshot.videos[].video_hd_url` (snake_case).
+- **Launch-blocker found + fixed** (`b560ae8`): P2/Step 7A read camelCase `videoHdUrl`; actor returns snake_case
+  `video_hd_url` → transcription would silently skip. Corrected both references + the actor-call example.
+- `donjuan_mime/audio-video-to-text` — the $5/mo rental; live but audio-only, low-adoption, accepts only
+  `{source_url, model}` (the `language` hint was being ignored). No cheap dedicated *visual* decoder exists.
+
+**Fast-follow batch shipped this pass:**
+- **Transcription upgraded** to a robust direct-URL + auto-language primary (`hgservices/speech-to-text` /
+  `truefetch/video-to-text`), $5 actor demoted to fallback.
+- **Native visual decode** added to Step 7A — orchestrator reads on-screen text / visual hook / format /
+  visual proof from `video_preview_image_url` + sampled frames using its own multimodal vision, fused with the
+  transcript. (This is the "visual decoder" — free, better than any $5 audio-only actor.)
+- **Brain hardening:** concurrency-safe write (re-read + merge before write) + **sample-size gating** (thin run
+  can't clobber a well-sampled median); `sample_size`/`window_days` added to schema.
+- **evolution-log read-back** at STEP 0 (loop now learns process, not just numbers) + benchmark re-validation
+  (>20% live-vs-cache drift → use live + refresh).
+- **Team runtime standard = Claude Code** — now the default `f_runtime` (Chat demoted to "legacy").
+- **CI gate** (`.github/workflows/qc.yml`) — brace/backtick/`node --check` on every push/PR.
+- CLAUDE.md documents the Brain, folder-restriction requirement, and verified actor facts.
+- Verified: backtick parity 0, braces 1807/1807, inline JS parses, master regenerates ~94K tokens, all
+  learning-loop wiring checks pass.
+
+**Deliberately deferred (routed to the weekly evolve-job / follow-up draft PR — cannot be render-tested headlessly, or are roadmap-scale):**
+- Beautifier `renderExecSummary` / `renderNext` hardening (pass leftover content through instead of silent
+  drop) — Low severity, needs a live browser render smoke test before shipping.
+- **Creative-outcome → score feedback loop** (shipped creative → realized CPL/lead-quality feeding the 90-gate) —
+  the agency's flagged #1 gap; still open, roadmap-scale.
+- P5 static IS-target refinement + P4 expert-roster rebalance toward local-lead-gen — Low.
+
 ## 0b. Session record — 2026-07-09 (learning loop wired — the "Brain")
 
 > Lightweight version of the Tier-1 learning loop, built after the owner confirmed the storage model.

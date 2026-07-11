@@ -701,16 +701,16 @@ input.field-error{border-color:var(--danger);background:var(--danger-soft)}
         </div>
         <div class="prompt-mode-options">
           <label class="prompt-mode-option">
-            <input type="radio" name="f_runtime" id="f_runtime_chat" value="claude-chat" onchange="updateRuntimeUI()" checked />
+            <input type="radio" name="f_runtime" id="f_runtime_chat" value="claude-chat" onchange="updateRuntimeUI()" />
             <div>
-              <div class="prompt-mode-title">Claude Chat <span class="prompt-mode-default">current</span></div>
+              <div class="prompt-mode-title">Claude Chat <span class="prompt-mode-default">legacy</span></div>
               <div class="prompt-mode-desc">Per-step copy/paste into a claude.ai chat. 9-11 paste points. Familiar workflow.</div>
             </div>
           </label>
           <label class="prompt-mode-option">
-            <input type="radio" name="f_runtime" id="f_runtime_code" value="claude-code" onchange="updateRuntimeUI()" />
+            <input type="radio" name="f_runtime" id="f_runtime_code" value="claude-code" onchange="updateRuntimeUI()" checked />
             <div>
-              <div class="prompt-mode-title">Claude Code <span class="prompt-mode-default">orchestrated</span></div>
+              <div class="prompt-mode-title">Claude Code <span class="prompt-mode-default">team standard</span></div>
               <div class="prompt-mode-desc">ONE master prompt → Claude Code session. Sub-agents QC every step + creative auditor scores scripts &ge;90/100 before strategist sees them.</div>
             </div>
           </label>
@@ -1756,7 +1756,7 @@ Then at the end, a clean copy-paste block of just the permalinks:
 The permalinks above are for human review. The actual scripts get extracted by YOU, right now. Captions cover maybe 20-30% of what a video ad communicates — the spoken script is the rest.
 
 1. **Source the video files:** from the Step 7 shortlist, take each ad's video CDN URL from the scrape data (\`snapshot.videos[].video_hd_url\`, fall back to \`snapshot.videos[].video_sd_url\` — these keys are snake_case in the \`curious_coder/facebook-ads-library-scraper\` output; do NOT look for camelCase \`videoHdUrl\`). These signed URLs expire within hours — transcription MUST happen in this same session, immediately after the scrape. (This is the one legitimate internal use of CDN URLs; they still never appear in the report.)
-2. **Transcribe up to 10 videos (hard cap 15):** call the Apify transcription actor \`donjuan_mime/audio-video-to-text\` through the same Apify connection used for the scrape, input: \`{ "model": "small", "source_url": "<the video_hd_url>" }\` (this actor's input schema is ONLY \`source_url\` + \`model\` — it does not accept a \`language\` field; extra keys are ignored). Use \`"small"\` (not \`"base"\`) — these competitor scripts are the chain's highest-value intel, and \`base\` mis-hears brand names, offers, and numbers often enough to poison the downstream analysis. If you fall back to a different transcription actor that DOES accept a language parameter, set it to the market's language from [GEOGRAPHY] (\`"en"\` for English markets, \`"fr"\` for Québec / French-Canadian, etc.) — a language hint sharply reduces word-error rate where the actor supports it. If \`small\` is unavailable on the actor, fall back to \`"base"\` rather than failing. If that actor is unavailable, search the Apify store for an equivalent "video to text" / Whisper actor and use it. If a video fails to transcribe, write "TRANSCRIPT UNAVAILABLE — [reason]" and continue. NEVER invent a transcript.
+2. **Transcribe up to 10 videos (hard cap 15):** call an Apify transcription actor through the same Apify connection used for the scrape, passing the direct \`video_hd_url\` as the source. Prefer a robust, high-success actor that takes a DIRECT media URL and AUTO-DETECTS language — good current choices: \`hgservices/speech-to-text\` (Deepgram, 99%+ success; input \`{ "mediaUrl": "<video_hd_url>", "language": "auto", "smartFormat": true }\`) or \`truefetch/video-to-text\` (auto language detection; input \`{ "video_url": "<video_hd_url>" }\`). Auto language detection matters because GTA / Montréal advertiser sets are frequently mixed-language and a single wrong hint raises word-error rate on the chain's highest-value intel. **Fallbacks, in order:** \`donjuan_mime/audio-video-to-text\` (input \`{ "model": "small", "source_url": "<video_hd_url>" }\` — audio-only, no language field, low-adoption so treat as backup); then search the Apify store for any equivalent "video to text" / Whisper actor. Where the actor exposes a Whisper model choice, use \`small\` or better — \`base\` mis-hears brand names, offers, and numbers. If a video fails to transcribe, write "TRANSCRIPT UNAVAILABLE — [reason]" and continue. NEVER invent a transcript.
 3. **Per transcribed video, output:**
 
 \`\`\`
@@ -1769,7 +1769,7 @@ FULL TRANSCRIPT: [cleaned transcript]
 \`\`\`
 
 4. **Roll-up:** a spoken-hook pattern table (same taxonomy as Step 5A) with frequency + average days active, then name the 1-2 most-proven script STRUCTURES in this market (the beat sequences the longest-running videos share).
-5. **Optional visual layer:** if a video-analysis tool is connected in this chat (e.g., Higgsfield video analysis / virality predictor), run the top 3-5 videos through it and record hook-strength / retention notes. If no such tool is connected, skip silently — this never blocks.
+5. **Visual decode (DO THIS — you are multimodal):** the spoken script is only ~half of a video ad; the visuals carry the rest. For the top 5-8 video ads, decode the VISUALS using your own vision — no paid actor needed. Use each ad's \`snapshot.videos[].video_preview_image_url\` (the keyframe the scrape already returns) and, where you can fetch it, sample 2-3 frames from the \`video_hd_url\`. Record: (a) **ON-SCREEN TEXT** verbatim — burned-in hook text, offer callouts, captions (these often differ from BOTH the spoken words and the ad copy); (b) **VISUAL HOOK** — what fills the first 1-2s (face/UGC, product demo, text card, pattern interrupt); (c) **SETTING & FORMAT** — talking-head vs b-roll vs screen-record vs testimonial; (d) **VISUAL PROOF** shown on screen (badges, star ratings, before/after, branded trucks/uniforms). Fuse this with the FULL TRANSCRIPT so the decode captures what the ad SHOWS, not only what it SAYS. If a dedicated video-analysis MCP is also connected (e.g. Higgsfield virality predictor), layer its hook-strength / retention read on top; if not, skip only that extra layer silently — your own visual read is the baseline and never blocks.
 
 This is the single highest-value creative intelligence in the chain — Step 10's video concepts MUST build on these spoken hooks and structures, not just captions.
 
@@ -9902,9 +9902,10 @@ function buildMasterPrompt(f) {
     '',
     '## D. Brain read (learning loop — the tool gets smarter every run)',
     'There is ONE shared memory folder on Google Drive, "' + BRAIN_NAME + '" (folder id `' + BRAIN_ID + '`), used by EVERY run for EVERY client. It is NOT the client folder — reach it directly by that id even though the operator only selected the client folder for this session.',
-    '- Open `benchmark-cache.json` from that folder and load it into working memory. It holds REAL CPL/CPM/CTR figures pulled from our own accounts on prior runs, keyed by {vertical, geo, platform, metric}.',
-    '- For this client\'s vertical + geo, if a fresh entry exists (updated within the last 180 days), treat its value as the **"Target CPL/CPM/CTR to beat"** downstream (Steps 4/5/6/7) INSTEAD of a web guess. Tag it `🧠 BRAIN BENCHMARK` so it is traceable. If no fresh entry matches, fall back to own-account query then web, exactly as before — and you will write what you find back at the end (Section below).',
-    '- If the Brain folder or file cannot be opened, note "🧠 Brain unavailable — proceeding without cache" and continue; never STOP a run over the Brain.',
+    '- Open `benchmark-cache.json` from that folder and load it into working memory. It holds a `benchmarks` array of REAL CPL/CPM/CTR figures pulled from our own accounts on prior runs, each keyed by {vertical, geo, platform, metric}.',
+    '- For this client\'s vertical + geo, if a fresh entry exists (updated within the last 180 days), treat its value as the **"Target CPL/CPM/CTR to beat"** downstream (Steps 4/5/6/7) INSTEAD of a web guess. Tag it `🧠 BRAIN BENCHMARK` so it is traceable. Even when you use a cached value, if the step already queries that own account, still make the cheap live pull and compare: if the live number has drifted >20% from cache, use the LIVE number and flag the cache entry for refresh at the end. If no fresh entry matches, fall back to own-account query then web, exactly as before — and you will write what you find back at the end (Section below).',
+    '- Also open `evolution-log.md` from the same folder and skim the last ~15 entries. If a recurring HURDLE or FIX IDEA matches this client\'s platform/vertical (e.g. "video-search URL returned too few ads", "creative capped for missing proof asset"), pre-empt it NOW — apply the known workaround up front instead of re-hitting the same wall. This is how the tool learns process, not just numbers.',
+    '- If the Brain folder or files cannot be opened, note "🧠 Brain unavailable — proceeding without cache" and continue; never STOP a run over the Brain.',
     ''
   ].join('\n');
 
@@ -10117,11 +10118,11 @@ function buildMasterPrompt(f) {
     'Before you finish, update the shared memory folder "' + BRAIN_NAME + '" (folder id `' + BRAIN_ID + '`) — the same folder you read in STEP 0 Section D. This is what makes the tool compound. Reach it by id; it is NOT the client folder. Two writes:',
     '',
     '## 1. benchmark-cache.json — upsert the REAL numbers you observed',
-    'For every own-account benchmark this run actually pulled (Steps 4/5/6/7 via Adzviser/Meta/Google), add or update an entry in the `benchmarks` array. Read the file, modify the JSON in memory, write the whole file back (valid JSON). Each entry:',
+    'For every own-account benchmark this run actually pulled (Steps 4/5/6/7 via Adzviser/Meta/Google), add or update an entry in the `benchmarks` array. **Concurrency-safe write:** re-read `benchmark-cache.json` from Drive IMMEDIATELY before writing (not the copy you loaded at STEP 0 — another teammate\'s run may have written in between); merge your entry into that LATEST version and write the whole file back as valid JSON, so you never clobber a parallel run\'s entry. Each entry:',
     '```json',
-    '{ "vertical": "<e.g. HVAC>", "geo": "<e.g. GTA>", "platform": "meta|google", "metric": "CPL|CPM|CTR", "value": <number>, "currency": "CAD", "source": "own-account", "sample_note": "<e.g. 90d, 3 accounts>", "updated": "<today YYYY-MM-DD>", "run": "<client-first-name+date, e.g. ecocare-2026-07-09>" }',
+    '{ "vertical": "<e.g. HVAC>", "geo": "<e.g. GTA>", "platform": "meta|google", "metric": "CPL|CPM|CTR", "value": <number>, "currency": "CAD", "source": "own-account", "sample_size": <# accounts or conversions behind this figure>, "window_days": <lookback, e.g. 90>, "updated": "<today YYYY-MM-DD>", "run": "<client-first-name+date, e.g. ecocare-2026-07-09>" }',
     '```',
-    'Rules: aggregate only — **no other client\'s name, no raw account IDs**. If an entry for the same {vertical, geo, platform, metric} exists, overwrite it with the newer figure. If this run pulled no own-account numbers, skip this write.',
+    'Rules: aggregate only — **no other client\'s name, no raw account IDs**. **Sample-size gating (do NOT blindly overwrite):** if an entry for the same {vertical, geo, platform, metric} already exists, only replace its value when your `sample_size` is ≥ the existing one; if yours is smaller, KEEP the existing figure and just append your run id to its history — a thin or anomalous run must never clobber a well-sampled median for 180 days. If sample sizes are comparable, use the more recent. Always refresh `updated` when you touch an entry. If this run pulled no own-account numbers, skip this write.',
     '',
     '## 2. evolution-log.md — append one retrospective entry',
     'Append (do not overwrite) one entry at the end of the file, using its documented format:',
