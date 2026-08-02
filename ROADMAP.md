@@ -57,6 +57,65 @@
 
 This is the "what could be better" list. Nothing here is started; each needs a green-light.
 
+### Tier 0 — Creative Persuasion Library ✅ SHIPPED 2026-08-01
+
+> Built after a full creator-script production run (24 scripts, 3 offer structures, 4 verticals).
+> The scripts worked because of persuasion decisions made for specific psychological reasons —
+> reasons that previously lived only in a chat log. The generator was strong at deciding *what an
+> ad is about* and had no library of *why certain moves persuade*, nor any step asking "which of
+> these moves are available to THIS client, and did we use them?"
+>
+> Deliberately generalized: nothing in the library is PPC-Guru-specific. Examples span unrelated
+> industries on purpose, and the blind EcoCare test (below) confirms zero client leakage.
+
+**What shipped, all in `RAW_PROMPTS` P10 (template-only — no form changes, Bug class 6 not in play):**
+
+| Piece | Where |
+|---|---|
+| **Section 9.5 — Creative Persuasion Library**: 10 elements (E1–E10), each with WHAT / WHY IT WORKS (the transferable mechanism) / PRECONDITION / FAILS WHEN | new section between §9 and §10 |
+| **9.5.1 Hook taxonomy** — 7 hook types tagged by what each optimises for + audience temperature | 9.5.1 |
+| **9.5.2 Default proof-led arc** — hook → offer → cut to proof → proof → division of labour → CTA | 9.5.2 |
+| **9.5.3 ELEMENT FIT PASS** — mandatory; every element declared USED / NOT AVAILABLE (naming the missing fact) / AVAILABLE BUT OMITTED (with reason) | 9.5.3 |
+| 5th ideation gate ("persuasion potential") + Fit Pass run at concept lock | Execution Step 3 |
+| Fit Pass table + "client inputs needed to unlock" | Output Structure §03 |
+| Hook-type declaration per script | Output Structure §03 concept block |
+| 6 checklist rows | §14 Self-Validation + Final Execution Checks |
+| **Persuasion Density** criterion + Fit Pass passed as auditor input (d) | `buildMasterPrompt` creative loop + sub-agent roster |
+
+**The mechanism that makes it work:** the Fit Pass forces a declared outcome for every element, so
+a lever the client actually had cannot be skipped silently. Explicitly *not* a score to maximise —
+a 20-second cut cannot carry ten elements, and a justified omission is a correct answer.
+
+**Also fixed — the live Before/After evidence gap.** §10.7 selection logic already refused
+archetypes whose ingredient was missing (no real review = no Review Screenshot) but omitted
+Before/After, while four other places actively recommended it. A client who recently switched
+providers has no usable "before" — it sat in the previous provider's account. Absence of a
+baseline is the DEFAULT for switchers. Now gated in the 10.7 selection logic, archetype #4, and
+video framework #5.
+
+**Verified:** backtick parity 0 · braces 1795/1795 · reconciler 0 orphans / 0 dead keys · all 4
+in-app Diagnostics pass · P10 standalone 66.5k chars · master (5 steps) 198k chars, well under the
+700k warn threshold · **blind EcoCare run: 12,250-char library section, zero PPC-Guru/vertical
+leakage.**
+
+**Companion asset (outside this repo):** `~/.claude/skills/ad-script/SKILL.md` — the
+PPC-Guru-specific *instance* of this general library, for script work done outside the chain.
+Keep the two in sync when either changes.
+
+#### Remaining from Tier 0 (not built)
+
+- **`f_proof_assets` + availability intake group** — the Fit Pass currently runs on model
+  judgment. It would run on *data* if intake captured, once: can this client guarantee (and on
+  what unit)? what proof assets exist? any real capacity limit? specialist or generalist? what
+  does a prospect get from one call? Touches the form + `validateForm` +
+  `updateConditionalSections` → Bug-class-6 sync risk, needs the full `qc-ppc-generator` 5-pass.
+  *Deliberately deferred* — see whether judgment alone closes the gap first.
+- **Live behavioural validation** — everything above is verified structurally. Nobody has yet run
+  the new P10 through a real Claude session to confirm the Fit Pass output is actually useful.
+  Do this on the next real client brief before trusting it.
+
+---
+
 ### Tier 1 — Close the learning loop (highest leverage; 3 reviewers converged here)
 - **Account-data-first benchmarks.** Benchmarks in P4/P5 are web-guessed. Rule change:
   query the agency's own connected Meta/Google/Adzviser accounts FIRST; web search is
@@ -79,6 +138,20 @@ This is the "what could be better" list. Nothing here is started; each needs a g
   fixed 8-10 panel arc, with ≥2 per ad set — mirrors the static archetype variety rule.
 
 ### Tier 3 — Tooling & currency
+- **Mechanical creator-safety gates** *(demoted from Tier 0 — real, but minor next to the
+  persuasion library)*. The chain verifies storyboard word **coverage** (paste panel voiceovers
+  back-to-back, confirm they equal the script) but never **speed or sayability**, which is how
+  400–1700 wpm storyboards once shipped. Four one-way gates, since a shoot cannot be re-cut:
+  (a) **pace** — words ÷ seconds × 60 must land 150–165, stated per panel; (b) **no [brackets] in
+  spoken VO** — these templates use brackets as placeholders throughout, so a creator reading
+  word-for-word will literally say "bracket, your industry"; (c) **numbers written as spoken** —
+  "fifteen hundred dollars", not "$1,500+"; (d) **no dangling clauses** after an edit removes a
+  promise's remedy. Plus a delivery-format rule: full VO block first, on-screen text second,
+  never interleaved. Only matters when a human creator reads the script aloud — irrelevant for
+  AI-avatar or voiceover-over-stock modes, so gate it on `[UGC_PRODUCTION_MODE]`.
+- **Substantiation gate for performance claims** — any "or you don't pay" / "guaranteed" / hard
+  number must name its counted unit (lead / qualified inquiry / booked job) or ship marked
+  LAUNCH-BLOCKED. Partially covered by 9.5 E1's precondition; not yet a hard checklist gate.
 - **Whisper is pinned to `base`** (lowest accuracy) on the chain's highest-value intel →
   bump to `small`/`medium` + `en`/`fr-CA` language hint. *(quick)*
 - **Meta 2026 currency** — P4/P6 still frame strategy as "Broad vs Advantage+ vs Lookalike"
