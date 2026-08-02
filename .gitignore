@@ -6,3 +6,24 @@
 
 # Local test artifacts
 *.pdf
+
+# Node deps — this is a no-build single-file app; node_modules only ever appears
+# transiently (e.g. playwright-core installed for headless Diagnostics runs).
+node_modules/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLIENT CONFIDENTIALITY GUARD — THIS REPO IS PUBLIC (Vercel Hobby requires it).
+# Never commit real client intake, research output, or exported vault data.
+# These patterns block the common ways it leaks. Keep them; do not loosen.
+# ─────────────────────────────────────────────────────────────────────────────
+client-*.json
+clients/
+*.client.json
+intake-*.json
+*-intake.json
+research-vault/
+*-vault.md
+vault-export*
+form-export*
+ppcguru_v2_data*.json
+*.real-client.*
