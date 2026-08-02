@@ -30,6 +30,9 @@ The step picker is organized by **platform**, because ~99% of runs are single-pl
 
 This repo's `index.html` is the **single source of truth**. Edit it directly here → commit → push → Vercel auto-deploys. There is no separate "canonical" file anymore.
 
+**Repo location:** `C:\Users\dapat\Downloads\Github Repo (codex & Code)\Prompt Generator\`
+(moved 2026-07 from `C:\Users\dapat\Downloads\Prompt Generator\` — the old path is dead; if any doc or skill still references it, fix the doc.)
+
 > The old `C:\Users\dapat\Downloads\Prompt Builder data\` "canonical" folder is **RETIRED**. Do NOT edit or sync it. Its `index.html` was confirmed byte-identical to this repo at cutover, so nothing was lost. (That folder still holds internal strategy docs + stale build artifacts that were deliberately NOT pushed — the repo is PUBLIC.)
 
 **Public-repo caution:** because Vercel Hobby requires the repo to be public, never commit client-confidential intake data or internal strategy/IP docs. Keep those out (or in a separate private repo).
@@ -84,7 +87,7 @@ Search for these names with `Grep` to land on the right section of `index.html`:
 After any non-trivial edit to `index.html`, run these structural checks against the file:
 
 ```powershell
-$p = "C:\Users\dapat\Downloads\Prompt Generator\index.html"   # the repo copy IS the source of truth now
+$p = "C:\Users\dapat\Downloads\Github Repo (codex & Code)\Prompt Generator\index.html"   # the repo copy IS the source of truth now
 $c = [System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)
 $bt = ($c.ToCharArray() | Where-Object {$_ -eq '`'}).Count
 $esc = ([regex]::Matches($c, '\\`')).Count
@@ -130,6 +133,8 @@ The SMM Virality Decoder is a **separate project** in a different repo at `C:\Us
 ## Auto session log
 <!-- Maintained automatically by the global Stop hook. Newest first, last 10 kept. Do not edit between these tags. -->
 
+- 2026-07-02 20:57 - Why do we have two different types of URLs, and that is causing an issue because we are updating and pushing i [...]
+- 2026-07-02 20:34 - ?????????????????????????????????????????????????????????????????????????????????????????????????????????????? [...]
 - 2026-06-30 17:07 - so this is running locally. Now can you create a repo with the same name and push everything that we have in a [...]
 - 2026-06-30 17:03 - is everything updated on record? Is there anything missing? Not the records. I have updated everything. Can yo [...]
 - 2026-06-30 16:57 - Please analyze this codebase and create a CLAUDE.md file, which will be given to future instances of Claude Co [...]
@@ -138,8 +143,6 @@ The SMM Virality Decoder is a **separate project** in a different repo at `C:\Us
 - 2026-06-30 15:56 - session activity
 - 2026-06-30 15:15 - Few things: - Whatever we have right now, let's keep this, because if needed, we can use your chat as well, an [...]
 - 2026-06-26 21:23 - But before changing anything, I just wanted to know your feedback. What do you suggest, or what is your opinio [...]
-- 2026-06-23 23:49 - Please analyze this codebase and create a CLAUDE.md file, which will be given to future instances of Claude Co [...]
-- 2026-06-23 23:46 - Check the vercel deploy task bljzy3ynr output and the Vercel project state via MCP to confirm whether the late [...]
 <!-- AUTO-LOG:END -->
 
 <!-- COMPACT-LOG:START -->
