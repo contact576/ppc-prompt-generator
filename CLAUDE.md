@@ -108,6 +108,8 @@ $open = ([regex]::Matches($c, '\{')).Count; $close = ([regex]::Matches($c, '\}')
 "braces: $open / $close (must match)"
 ```
 
+**These structural checks now also run automatically in CI** (`.github/workflows/qc.yml`) on every push/PR — brace balance, backtick parity, and `node --check` on the inline `<script>`. A red `structural` check gates the merge/Vercel deploy, so treat it as the hard gate. Agents run on Linux, not PowerShell — the workflow file has the exact Node one-liner; run it locally before pushing to avoid a failed CI round-trip.
+
 Then open the local file in Chrome and click **🔧 Run Diagnostics** on the output page — that's the in-app reconciler + round-trip test.
 
 The `qc-ppc-generator` skill encodes the full 5-pass audit (structural + placeholder + renderer-trap + TEST_DATA round-trip + live render smoke); invoke it before any deploy that touched `RAW_PROMPTS` or the Beautifier.
